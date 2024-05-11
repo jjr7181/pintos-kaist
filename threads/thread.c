@@ -165,7 +165,21 @@ thread_print_stats (void) {
 	printf ("Thread: %lld idle ticks, %lld kernel ticks, %lld user ticks\n",
 			idle_ticks, kernel_ticks, user_ticks);
 }
-
+/*위 함수는 스레드의 상태 변경을 위한 함수로 thread->sleep list->block의 순서로 구성될 예정입니다.*/
+void thread_sleep(int64_t ticks){
+	struct thread *current_thread = thread_current();		
+	enum intr_level old_level;
+	
+	old_level = intr_disable();
+	if (current_thread != idle_thread) {
+		current_thread->wakeup_tick = ticks;
+		list_push_back(&sleep_list, &current_thread->elem);
+		update_next_tick_to_awake(current_thread->wakeup_tick);
+	}
+	
+	do_schedule(THREAD_BLOCKED);
+	intr_set_level(old_level); 
+}
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
