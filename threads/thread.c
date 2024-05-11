@@ -98,27 +98,7 @@ static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
    finishes. */
 void
 thread_init (void) {
-	ASSERT (intr_get_level () == INTR_OFF);
-
-	/* Reload the temporal gdt for the kernel
-	 * This gdt does not include the user context.
-	 * The kernel will rebuild the gdt with user context, in gdt_init (). */
-	struct desc_ptr gdt_ds = {
-		.size = sizeof (gdt) - 1,
-		.address = (uint64_t) gdt
-	};
-	lgdt (&gdt_ds);
-
-	/* Init the globla thread context */
-	lock_init (&tid_lock);
-	list_init (&ready_list);
-	list_init (&destruction_req);
 	list_init(&sleep_list);
-	/* Set up a thread structure for the running thread. */
-	initial_thread = running_thread ();
-	init_thread (initial_thread, "main", PRI_DEFAULT);
-	initial_thread->status = THREAD_RUNNING;
-	initial_thread->tid = allocate_tid ();
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -166,35 +146,36 @@ thread_print_stats (void) {
 }
 /*위 함수는 스레드의 상태 변경을 위한 함수로 thread->sleep list->block의 순서로 구성될 예정입니다.*/
 void thread_sleep(int64_t ticks){
-	struct thread *current_thread = thread_current();		
-	enum intr_level old_level;
-	
-	old_level = intr_disable();
-	if (current_thread != idle_thread) {
-		current_thread->wakeup_tick = ticks;
-		list_push_back(&sleep_list, &current_thread->elem);
-		update_next_tick_to_awake(current_thread->wakeup_tick);
-	}
-	
+ struct thread *cur;
+    enum intr_level old_level;
+
+    old_level = intr_disable(); // interrupt 끔
+    cur = thread_current();
+
+    ASSERT(cur != idle_thread);
+
+    cur->wakeup_tick=ticks;                
+    list_push_back(&sleep_list, &cur->elem); 
 	do_schedule(THREAD_BLOCKED);
 	intr_set_level(old_level); 
 }
 /*위 함수는 잠재운 스레드를 꺠우는 함수입니다.*/
 void
 thread_awake(int64_t ticks){
-	struct list_elem *search_elem;
-	
-	for (search_elem = list_begin(&sleep_list); search_elem != list_end(&sleep_list);) {
-		struct thread *search_thread = list_entry(search_elem, struct thread, elem);
-		
-		if (search_thread->wakeup_tick <= ticks) {  
-			search_elem = list_remove(search_elem);	//next로 이동시키면서 진행
-			thread_unblock(search_thread);			//  block->ready로 바꾸고 ready_list로 올린다.
-		} else {
-			search_elem = list_next(search_elem);
-			update_next_tick_to_awake(search_thread->wakeup_tick);	
-		}
-	}
+ struct list_elem *e = list_begin(&sleep_list);
+    while (e != list_end(&sleep_list))
+    {
+        struct thread *t = list_entry(e, struct thread, elem);
+        if (t->wakeup_tick <= ticks) // 현재 시각이 일어날 시간을 지났으면 -> 일어나!!
+        {
+            e = list_remove(e);
+            thread_unblock(t);
+        }
+        else
+        {
+            e = list_next(e);
+        }
+    }
 }
 void
 update_next_tick_to_awake (int64_t ticks) {
