@@ -28,6 +28,12 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/*BLCKED state의 processes를 관리하는 리스트. timer_interrupt에 의해서 wakeup되고 다시 ready_list로 이동*/
+static struct list sleep_list; //sleep_list 선언 task1
+
+//global tick선언  task1
+static long long global_tick = 1e9;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -105,9 +111,10 @@ thread_init (void) {
 	};
 	lgdt (&gdt_ds);
 
-	/* Init the globla thread context */
+	/* Init the global thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list); //sleep_list 초기화. task1
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -210,6 +217,77 @@ thread_create (const char *name, int priority,
 	return tid;
 }
 
+bool
+list_less (const struct list_elem *a, const struct list_elem *b, void *aux){
+	const struct thread *thread_a = list_entry(a, struct thread, elem);
+  const struct thread *thread_b = list_entry(b, struct thread, elem);
+  // 비교 로직을 구현하여 A가 B보다 작은지 여부를 반환
+  return thread_a->local_tick < thread_b->local_tick;
+}
+
+int64_t 
+get_global_tick () {
+	return global_tick;
+}
+
+void
+set_global_tick () {
+	struct list_elem *front = list_begin(&sleep_list);
+	struct thread *t = list_entry(front, struct thread, elem);
+
+	global_tick = t->local_tick;
+}
+
+void
+wake_up (int64_t ticks) {
+	while(!list_empty(&sleep_list)) {
+		struct list_elem *front = list_begin(&sleep_list);
+		struct thread *t = list_entry(front, struct thread, elem);
+
+		if(t->local_tick > ticks) break;
+
+		enum intr_level old_level;
+		old_level = intr_disable();
+
+		// global tick, sleep_list에서 min local tick 값 담아주기
+		// global_tick = list_entry(front, struct thread, elem)->local_tick;
+
+		// global tick보다 OS tick이 더 클때만 sleep_list를 순회
+		struct list_elem *chaeyun = list_pop_front(&sleep_list);
+		struct thread *yunkyung = list_entry(chaeyun, struct thread, elem);
+		yunkyung->status = THREAD_READY;
+		list_push_back(&ready_list, chaeyun);
+		// thread_unblock(&wake_up_thread);
+		// list_entry(list_begin(&sleep_list), struct thread, elem)
+		intr_set_level (old_level);
+	}
+	set_global_tick();
+}
+
+//thread를 blocked 상태로 바꿔주고 sleep_list에 넣어주는 함수
+void
+thread_sleep (int64_t thread_sleep_ticks) {
+	//현재 running thread를 받아오기
+	struct thread *curr = thread_current ();
+	enum intr_level old_level;
+
+	ASSERT (!intr_context ());
+	
+	// curr thread에 local tick 저장해주기
+
+	//sleep_list에 추가
+	old_level = intr_disable();
+	if (curr != idle_thread) {
+		curr->local_tick = thread_sleep_ticks;
+		list_insert_ordered (&sleep_list, &curr->elem, list_less, &curr->local_tick);
+		// thread_block();
+		curr->status = THREAD_BLOCKED;
+		global_tick = (global_tick < thread_sleep_ticks) ? global_tick : thread_sleep_ticks;
+	}
+	schedule();			
+	intr_set_level (old_level);
+}
+
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -218,10 +296,15 @@ thread_create (const char *name, int priority,
    primitives in synch.h. */
 void
 thread_block (void) {
+	printf("여까지됨1 \n");
 	ASSERT (!intr_context ());
+	printf("여까지됨2\n");
 	ASSERT (intr_get_level () == INTR_OFF);
+	printf("여까지됨3\n");
 	thread_current ()->status = THREAD_BLOCKED;
+	printf("여까지됨4\n");
 	schedule ();
+	printf("여까지됨5\n");
 }
 
 /* Transitions a blocked thread T to the ready-to-run state.
@@ -301,11 +384,11 @@ thread_yield (void) {
 
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable ();
+	old_level = intr_disable (); //disables interrupt
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
-	do_schedule (THREAD_READY);
-	intr_set_level (old_level);
+		list_push_back (&ready_list, &curr->elem); //ready_list 끝으로 다시 삽입
+	do_schedule (THREAD_READY); //THREAD_READY상태로 돌리고, do_schedule로 context switch
+	intr_set_level (old_level); //restores interrupt state
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -409,6 +492,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	// init local tick
+	t->local_tick = 0;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
