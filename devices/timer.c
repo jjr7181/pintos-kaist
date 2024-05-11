@@ -183,3 +183,12 @@ real_time_sleep (int64_t num, int32_t denom) {
 		busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 	}
 }
+static void
+timer_interrupt (struct intr_frame *args UNUSED) {
+	ticks++;
+	thread_tick ();
+	
+	if (get_next_tick_to_awake() <= ticks) {				
+		thread_awake(ticks);							
+	}
+}

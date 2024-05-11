@@ -180,6 +180,30 @@ void thread_sleep(int64_t ticks){
 	do_schedule(THREAD_BLOCKED);
 	intr_set_level(old_level); 
 }
+/*위 함수는 잠재운 스레드를 꺠우는 함수입니다.*/
+void
+thread_awake(int64_t ticks){
+	struct list_elem *search_elem;
+	
+	for (search_elem = list_begin(&sleep_list); search_elem != list_end(&sleep_list);) {
+		struct thread *search_thread = list_entry(search_elem, struct thread, elem);
+		
+		if (search_thread->wakeup_tick <= ticks) {  
+			search_elem = list_remove(search_elem);	//next로 이동시키면서 진행
+			thread_unblock(search_thread);			//  block->ready로 바꾸고 ready_list로 올린다.
+		} else {
+			search_elem = list_next(search_elem);
+			update_next_tick_to_awake(search_thread->wakeup_tick);	
+		}
+	}
+}
+void
+update_next_tick_to_awake (int64_t ticks) {
+	next_tick_to_awake = (ticks < next_tick_to_awake) ? ticks : next_tick_to_awake; 
+}
+int64_t get_next_tick_to_awake (void) {
+	return next_tick_to_awake;
+}
 /* Creates a new kernel thread named NAME with the given initial
    PRIORITY, which executes FUNCTION passing AUX as the argument,
    and adds it to the ready queue.  Returns the thread identifier
