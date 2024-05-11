@@ -47,8 +47,8 @@ static struct list destruction_req;
 static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
-static int64_t next_tick_to_awake;
-static long long next_tick_to_awake;
+static 	int64_t next_tick_to_awake=INT64_MAX;
+
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
@@ -119,7 +119,6 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
-	next_tick_to_awake=INT64_MAX;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
