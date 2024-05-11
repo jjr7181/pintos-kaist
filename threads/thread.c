@@ -154,7 +154,7 @@ void thread_sleep(int64_t ticks){
 
     ASSERT(cur != idle_thread);
 
-    cur->wakeup_tick=ticks;                
+    cur->wakeup=ticks;                
     list_push_back(&sleep_list, &cur->elem); 
 	do_schedule(THREAD_BLOCKED);
 	intr_set_level(old_level); 
@@ -166,7 +166,7 @@ thread_awake(int64_t ticks){
     while (e != list_end(&sleep_list))
     {
         struct thread *t = list_entry(e, struct thread, elem);
-        if (t->wakeup_tick <= ticks) // 현재 시각이 일어날 시간을 지났으면 -> 일어나!!
+        if (t->wakeup <= ticks) // 현재 시각이 일어날 시간을 지났으면 -> 일어나!!
         {
             e = list_remove(e);
             thread_unblock(t);
