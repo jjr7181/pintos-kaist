@@ -146,35 +146,47 @@ thread_print_stats (void) {
 }
 /*위 함수는 스레드의 상태 변경을 위한 함수로 thread->sleep list->block의 순서로 구성될 예정입니다.*/
 void thread_sleep(int64_t ticks){
- struct thread *cur;
-    enum intr_level old_level;
+	struct thread *curr;
+	enum intr_level old_level;
 
-    old_level = intr_disable(); // interrupt 끔
-    cur = thread_current();
+	ASSERT (!intr_context ());//?
+	old_level = intr_disable ();
+	curr = thread_current ();
 
-    ASSERT(cur != idle_thread);
-
-    cur->wakeup=ticks;                
-    list_push_back(&sleep_list, &cur->elem); 
-	intr_set_level(old_level); 
+	ASSERT(curr != idle_thread)
+	
+	if (next_tick_to_awake>ticks){
+		next_tick_to_awake = ticks;
+	} 
+	curr->wake_up_tick = ticks;
+	list_push_back (&sleep_list, &curr->elem);	
+	thread_block();
+	intr_set_level (old_level);
 }
-/*위 함수는 잠재운 스레드를 꺠우는 함수입니다.*/
-void
-thread_awake(int64_t ticks){
- struct list_elem *e = list_begin(&sleep_list);
-    while (e != list_end(&sleep_list))
-    {
-        struct thread *t = list_entry(e, struct thread, elem);
-        if (t->wakeup <= ticks) // 현재 시각이 일어날 시간을 지났으면 -> 일어나!!
-        {
-            e = list_remove(e);
-            thread_unblock(t);
-        }
-        else
-        {
-            e = list_next(e);
-        }
-    }
+
+void thread_awake(int64_t ticks){
+	next_tick_to_awake = INT64_MAX;
+	enum intr_level old_level;
+	struct list_elem *e;
+	ASSERT (intr_context ());
+
+	for (e = list_begin (&sleep_list); e != list_end (&sleep_list);) {
+		struct thread* t = list_entry(e, struct thread, elem);
+	
+		if (t->wake_up_tick <= ticks) {
+			e = list_remove(e);
+			thread_unblock(t);
+			if (preempt_by_priority()){
+				intr_yield_on_return();
+			}
+		}
+		else {
+			if (t->wake_up_tick<next_tick_to_awake){
+				next_tick_to_awake = t->wake_up_tick;
+			}
+			e = list_next(e);
+		}
+	}
 }
 void
 update_next_tick_to_awake (int64_t ticks) {

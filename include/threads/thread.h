@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -27,6 +28,11 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+
+/* ------------------ project2 -------------------- */
+#define FDT_PAGES 3		/* pages to allocate for file descriptor tables (thread_create, process_exit) */
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9)		/* limit fd_idx */
+/* ------------------------------------------------ */
 
 /* A kernel thread or user process.
  *
@@ -95,6 +101,27 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 
+	/* ----- PROJECT 1 --------- */
+	int64_t wake_up_tick; /* thread's wakeup_time */
+	int initial_priority; /* thread's initial priority */
+	struct lock *wait_on_lock; /* which lock thread is waiting for  */
+	struct list donation_list; /* list of threads that donate priority to **this thread** */
+	struct list_elem donation_elem; /* prev and next pointer of donation_list where **this thread donate** */
+	/* ------------------------- */
+
+	/* ---------- Project 2 ---------- */
+	int exit_status;	 	/* to give child exit_status to parent */
+	int fd_idx;                     /* for open file's fd in fd_table */
+	struct intr_frame parent_if;	/* Information of parent's frame */
+	struct list child_list; /* list of threads that are made by this thread */
+	struct list_elem child_elem; /* elem for this thread's parent's child_list */
+	struct semaphore fork_sema; /* parent thread should wait while child thread copy parent */
+	struct semaphore wait_sema;
+	struct semaphore free_sema;
+	struct file **fd_table;   /* allocated in thread_create */	
+	struct file *running;
+	/* ------------------------------- */
+	
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -107,10 +134,7 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
-	int64_t wakeup;
-
 };
-
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -119,10 +143,7 @@ extern bool thread_mlfqs;
 
 void thread_init (void);
 void thread_start (void);
-void thread_sleep (int64_t ticks);				
-void thread_awake (int64_t ticks);				
-void update_next_tick_to_awake (int64_t ticks); 
-int64_t get_next_tick_to_awake (void);
+
 void thread_tick (void);
 void thread_print_stats (void);
 
@@ -148,6 +169,16 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
-void test_max_priority (void);	
-bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);		
+
+/* ------------- project 1 ------------ */
+void thread_sleep(int64_t ticks);
+void thread_awake(int64_t ticks);
+int64_t get_next_tick_to_awake(void);
+bool thread_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+bool preempt_by_priority(void);
+bool thread_donate_priority_compare (struct list_elem *element1, struct list_elem *element2, void *aux);
+/* ------------------------------------- */
+/* ------------------- project 2 -------------------- */
+struct thread* get_child_by_tid(tid_t tid);
+/* -------------------------------------------------- */
 #endif /* threads/thread.h */
