@@ -45,6 +45,12 @@ static long long idle_ticks;    /* # of timer ticks spent idle. */
 static long long kernel_ticks;  /* # of timer ticks in kernel threads. */
 static long long user_ticks;    /* # of timer ticks in user programs. */
 
+/* 과제) alarm 기능 구현. sleep list 만들기*/
+static struct list sleep_list;
+
+/* global ticks 선언 */
+static int64_t global_ticks;
+
 /* Scheduling. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
@@ -79,6 +85,7 @@ static tid_t allocate_tid (void);
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
 
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -109,6 +116,7 @@ thread_init (void) {
 	lock_init (&tid_lock);
 	list_init (&ready_list);
 	list_init (&destruction_req);
+	list_init (&sleep_list);
 
 	/* Set up a thread structure for the running thread. */
 	initial_thread = running_thread ();
@@ -296,16 +304,16 @@ thread_exit (void) {
    may be scheduled again immediately at the scheduler's whim. */
 void
 thread_yield (void) {
-	struct thread *curr = thread_current ();
+	struct thread *curr = thread_current (); //현재 스레드 포인터 가져오기
 	enum intr_level old_level;
 
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable ();
+	old_level = intr_disable (); // 인터럽트 비활성화 및 이전 인터럽트 상태 반환
 	if (curr != idle_thread)
 		list_push_back (&ready_list, &curr->elem);
-	do_schedule (THREAD_READY);
-	intr_set_level (old_level);
+	do_schedule (THREAD_READY); // context switch
+	intr_set_level (old_level); // 인터럽트 상태 되돌리기
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -576,6 +584,45 @@ schedule (void) {
 	}
 }
 
+/* sleep 시킬 thread */
+void
+thread_sleep(int64_t thread_sleep_tick){
+	/*
+	* 1. sleep 시킬 thread를 찾는다
+	* 2. 인터럽트를 중지시킨다.
+	* 3. 현재 스레드가 idle이 아니면 sleep list 삽입 과정을 진행한다.
+	* 4. 스레드를 sleep list에 삽입하고, 스레드 상태를 blocked로 바꾼다.
+	* 	4-1. sleep list를 삽입하기 전에, 현재 스레드의 sleep tick 정보를 스레드 구조체에 저장한다.
+	* 	4-2. sleep list에 삽입한다.
+	* 	4-3. 스레드 상태를 바꾼다.
+	* 5. 인터럽트를 다시 되돌린다.
+	*/
+
+	struct thread *curr = thread_current();
+
+	enum intr_level old_level;
+	old_level = intr_disable ();
+
+	if(curr != idle_thread) {
+		curr->local_ticks = thread_sleep_tick;
+
+		list_insert_ordered(&sleep_list, &curr->elem, list_less, NULL);
+
+		set_global_tick();
+
+		thread_block();
+	}
+	
+	intr_set_level (old_level);
+}
+
+bool
+list_less (const struct list_elem *a, const struct list_elem *b, void *aux) {
+	int64_t a_tick = list_entry(a, struct thread, elem)->local_ticks;
+	int64_t b_tick = list_entry(b, struct thread, elem)->local_ticks;
+	return a_tick < b_tick;
+}
+
 /* Returns a tid to use for a new thread. */
 static tid_t
 allocate_tid (void) {
@@ -587,4 +634,45 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+void
+wake_up(int64_t ticks) {
+	// int64_t wake_up_t = global_ticks;
+
+	// wake up 할 threads 탐색
+	if(global_ticks <= ticks)
+		search_wake_up_t(ticks);
+}
+
+void
+search_wake_up_t(int64_t *os_tick){
+	struct thread *sleep_thread = list_entry(list_begin(&sleep_list), struct thread, elem);
+	int64_t sleep_thread_t = sleep_thread->local_ticks; 
+
+	if (list_empty(&sleep_list)) return;
+
+	while(sleep_thread_t <= os_tick){
+
+		insert_ready_list();
+
+		ASSERT(sleep_thread->elem.next != NULL)
+
+		sleep_thread = list_entry(list_begin(&sleep_list), struct thread, elem);
+		sleep_thread_t = sleep_thread->local_ticks;
+	}
+
+	set_global_tick();
+}
+
+void
+insert_ready_list(){
+	struct thread *move_t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
+
+	thread_unblock(move_t);
+}
+
+void
+set_global_tick(){
+	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
 }
