@@ -156,7 +156,6 @@ void thread_sleep(int64_t ticks){
 
     cur->wakeup=ticks;                
     list_push_back(&sleep_list, &cur->elem); 
-	do_schedule(THREAD_BLOCKED);
 	intr_set_level(old_level); 
 }
 /*위 함수는 잠재운 스레드를 꺠우는 함수입니다.*/

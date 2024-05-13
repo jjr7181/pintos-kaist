@@ -93,7 +93,10 @@ timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
+	if(timer_elapsed(start)<ticks){
 	thread_sleep(start+ticks);
+	}
+	//쓰레기 스레드에 대한 예외처리 추가하기
 }
 
 /* Suspends execution for approximately MS milliseconds. */
