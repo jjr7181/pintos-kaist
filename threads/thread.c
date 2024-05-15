@@ -697,15 +697,6 @@ remove_with_lock (struct lock *lock) {
 			list_remove (&t->donation_elem);
     }
 }
-static void
-thread_set_priority (int new_priority) {
-	/* ==================== project1 Prioirity Scheduling ==================== */
-    thread_current ()->init_priority = new_priority;
-    // thread_current ()->priority = new_priority;
-	refresh_priority ();
-	test_max_priority();
-	/* ==================== project1 Prioirity Scheduling ==================== */
-}
 void 
 test_max_priority (void) 
 {
@@ -716,6 +707,15 @@ test_max_priority (void)
 
     if (thread_get_priority() < th->priority)
         thread_yield();
+}
+static void
+thread_set_priority (int new_priority) {
+	/* ==================== project1 Prioirity Scheduling ==================== */
+    thread_current ()->init_priority = new_priority;
+    // thread_current ()->priority = new_priority;
+	refresh_priority ();
+	test_max_priority();
+	/* ==================== project1 Prioirity Scheduling ==================== */
 }
 void
 refresh_priority (void) {
