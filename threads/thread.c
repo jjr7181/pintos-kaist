@@ -722,12 +722,3 @@ refresh_priority (void) {
 			cur->priority = front->priority;
     }
 }
-void
-thread_set_priority (int new_priority) {
-	/* ==================== project1 Prioirity Scheduling ==================== */
-    thread_current ()->init_priority = new_priority;
-    // thread_current ()->priority = new_priority;
-	refresh_priority ();
-	test_max_priority();
-	/* ==================== project1 Prioirity Scheduling ==================== */
-}
