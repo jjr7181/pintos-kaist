@@ -616,25 +616,15 @@ thread_compare_donate_priority (const struct list_elem *l,
 	return list_entry (l, struct thread, donation_elem)->priority
 		 > list_entry (s, struct thread, donation_elem)->priority;
 }
-void lock_acquire (struct lock *lock) {
-	ASSERT (lock != NULL);
-	ASSERT (!intr_context ());
-	ASSERT (!lock_held_by_current_thread (lock));
-	/* --- pjt 1.2 priority donation --- */
-    if (lock->holder) {
-    	struct thread *cur = thread_current (); // 현재 lock_acquire를 실행하는 스레드가 thread_current
-        cur->wait_on_lock = lock; // 현재 스레드가 어떤 lock 기다리고 있는지 입력
-        list_insert_ordered(&lock->holder->donations, &cur->donation_elem, 
-        thread_compare_donate_priority, 0);
-        donate_priority(); 	
-    }
-    /* --- pjt 1.2 priority donation --- */
-    
-    sema_down (&lock->semaphore);
-    /* --- pjt 1.2 priority donation --- */
-    cur->wait_on_lock = NULL;
-    /* --- pjt 1.2 priority donation --- */
-    lock->holder = thread_current ();
+void
+lock_acquire (struct lock *lock)
+{
+  ASSERT (lock != NULL);
+  ASSERT (!intr_context ());
+  ASSERT (!lock_held_by_current_thread (lock));
+
+  sema_down (&lock->semaphore);
+  lock->holder = thread_current ();
 }
 void refresh_priority (void)
 {
