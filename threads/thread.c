@@ -667,7 +667,7 @@ void
 thread_wakeup (int64_t ticks) {
 	struct thread *cur = list_entry(list_begin(&sleep_list), struct thread, elem);
 
-	//sleep_list가 empty면 global tick update 하지 않고 return
+	//sleep_list가 empty거나 아직 깨울 thread가 없담녀 return
 	if(list_empty(&sleep_list) || global_ticks > ticks)
 		return;
 
@@ -677,33 +677,11 @@ thread_wakeup (int64_t ticks) {
 	
 		if(cur->local_ticks > ticks) return; 
 
-		//put the waken thread into the ready list
-		struct list_elem *waken = list_pop_front (&sleep_list);
-		struct thread *waken_thread = list_entry(waken, struct thread, elem);	
-		// thread_unblock (list_entry(list_begin(&sleep_list), struct thread, elem));
-		thread_unblock (waken_thread);
-		// struct list_elem *waken = list_pop_front (&sleep_list);
-
-		// cur = list_entry(list_begin(&sleep_list), struct thread, elem);
-	}
-
-	// while (cur->local_ticks <= ticks && &cur->elem != list_end(&sleep_list)){
-	// 	struct list_elem *front = list_begin(&sleep_list);
-	// 	struct thread *t = list_entry(front, struct thread, elem);
-	
-	// 	if(t->local_ticks > ticks) return; 
-
-	// 	//put the waken thread into the ready list
-	// 	struct list_elem *waken = list_pop_front (&sleep_list);
-	// 	struct thread *waken_thread = list_entry(waken, struct thread, elem);	
-	// 	// thread_unblock (list_entry(list_begin(&sleep_list), struct thread, elem));
-	// 	thread_unblock (waken_thread);
-	// 	// struct list_elem *waken = list_pop_front (&sleep_list);
-
-	// 	cur = list_entry(list_begin(&sleep_list), struct thread, elem);
-
+		//unblock하고 pop하면 문제가 생김 왜 why일끼?
+		list_pop_front(&sleep_list);
+		thread_unblock (cur);
 		
-	// }
-	//global ticks update
-	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
+		//global ticks update
+		global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
+	}
 }
