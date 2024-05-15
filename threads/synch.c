@@ -182,6 +182,13 @@ lock_init (struct lock *lock) {
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+   static bool
+thread_compare_donate_priority (const struct list_elem *l, 
+				const struct list_elem *s, void *aux UNUSED)
+{
+	return list_entry (l, struct thread, donation_elem)->priority
+		 > list_entry (s, struct thread, donation_elem)->priority;
+}
 void
 lock_acquire (struct lock *lock)
 {
@@ -201,13 +208,6 @@ lock_acquire (struct lock *lock)
   
   cur->wait_on_lock = NULL;
   lock->holder = cur;
-}
-static bool
-thread_compare_donate_priority (const struct list_elem *l, 
-				const struct list_elem *s, void *aux UNUSED)
-{
-	return list_entry (l, struct thread, donation_elem)->priority
-		 > list_entry (s, struct thread, donation_elem)->priority;
 }
 void
 lock_release (struct lock *lock) 
