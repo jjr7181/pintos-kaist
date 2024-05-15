@@ -706,6 +706,17 @@ thread_set_priority (int new_priority) {
 	test_max_priority();
 	/* ==================== project1 Prioirity Scheduling ==================== */
 }
+void 
+test_max_priority (void) 
+{
+    if (list_empty(&ready_list))
+        return;
+
+    struct thread *th = list_entry(list_front(&ready_list), struct thread, elem);
+
+    if (thread_get_priority() < th->priority)
+        thread_yield();
+}
 void
 refresh_priority (void) {
     struct thread *cur = thread_current ();
