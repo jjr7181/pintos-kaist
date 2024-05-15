@@ -95,7 +95,6 @@ struct thread {
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-	int priority;                       /* Priority. */
 	/*---Project 1.4 Priority donation ---*/
     
 	int init_priority; // thread의 priority는 donation에 의해 매번 바뀔 수 있음. 그러니 맨 처음에 할당받은 priority를 기억해둬야!
