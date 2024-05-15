@@ -318,11 +318,15 @@ thread_yield (void) {
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void
+static void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	/* ==================== project1 Prioirity Scheduling ==================== */
+    thread_current ()->init_priority = new_priority;
+    // thread_current ()->priority = new_priority;
+	refresh_priority ();
+	test_max_priority();
+	/* ==================== project1 Prioirity Scheduling ==================== */
 }
-
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
@@ -707,15 +711,6 @@ test_max_priority (void)
 
     if (thread_get_priority() < th->priority)
         thread_yield();
-}
-static void
-thread_set_priority (int new_priority) {
-	/* ==================== project1 Prioirity Scheduling ==================== */
-    thread_current ()->init_priority = new_priority;
-    // thread_current ()->priority = new_priority;
-	refresh_priority ();
-	test_max_priority();
-	/* ==================== project1 Prioirity Scheduling ==================== */
 }
 void
 refresh_priority (void) {
