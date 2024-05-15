@@ -676,7 +676,7 @@ thread_compare_donate_priority (const struct list_elem *l,
 	return list_entry (l, struct thread, donation_elem)->priority
 		 > list_entry (s, struct thread, donation_elem)->priority;
 }
-void
+static void
 donate_priority (void)
 {
   int depth;
@@ -689,7 +689,7 @@ donate_priority (void)
       cur = holder;
   }
 }
-void
+static void
 remove_with_lock (struct lock *lock)
 {
   struct list_elem *e;
@@ -701,7 +701,7 @@ remove_with_lock (struct lock *lock)
       list_remove (&t->donation_elem);
   }
 }
-void
+static void
 refresh_priority (void)
 {
   struct thread *cur = thread_current ();
