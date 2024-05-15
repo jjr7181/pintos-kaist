@@ -9,7 +9,18 @@ struct semaphore {
 	unsigned value;             /* Current value. */
 	struct list waiters;        /* List of waiting threads. */
 };
-
+struct semaphore_elem {
+	struct list_elem elem;              /* List element. */
+	struct semaphore semaphore;         /* This semaphore. */
+};
+struct condition {
+	struct list waiters;        /* List of waiting threads. */
+};
+struct lock
+{
+	struct thread *holder; /* Thread holding lock */
+	struct semaphore semaphore; /* Binary semaphore controlling access. */
+};
 void sema_init (struct semaphore *, unsigned value);
 void sema_down (struct semaphore *);
 bool sema_try_down (struct semaphore *);
