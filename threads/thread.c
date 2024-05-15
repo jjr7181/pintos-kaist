@@ -431,22 +431,6 @@ kernel_thread (thread_func *function, void *aux) {
 
 /* Does basic initialization of T as a blocked thread named
    NAME. */
-static void
-init_thread (struct thread *t, const char *name, int priority) {
-	ASSERT (t != NULL);
-	ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
-	ASSERT (name != NULL);
-
-	memset (t, 0, sizeof *t);
-	t->status = THREAD_BLOCKED;
-	strlcpy (t->name, name, sizeof t->name);
-	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
-	t->priority = priority;
-	t->magic = THREAD_MAGIC;
-
-	// init local tick
-	t->local_ticks = 0;
-}
 
 /* Chooses and returns the next thread to be scheduled.  Should
    return a thread from the run queue, unless the run queue is
@@ -617,7 +601,7 @@ void donate_priority(void)
 	int depth;
     struct thread *cur = thread_current();
     
-    for (depth =0, depth < 8, depth++) {
+    for (depth =0; depth < 8; depth++) {
     	if (!cur->wait_on_lock) // 기다리는 lock이 없다면 종료
         	break;
         struct thread *holder = cur->wait_on_lock->holder;
