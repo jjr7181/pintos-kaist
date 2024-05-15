@@ -216,7 +216,21 @@ thread_create (const char *name, int priority,
 
 	return tid;
 }
+void
+refresh_priority (void)
+{
+  struct thread *cur = thread_current ();
 
+  cur->priority = cur->init_priority;
+  
+  if (!list_empty (&cur->donations)) {
+    list_sort (&cur->donations, thread_compare_donate_priority, 0);
+
+    struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
+    if (front->priority > cur->priority)
+      cur->priority = front->priority;
+  }
+}
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -699,20 +713,5 @@ remove_with_lock (struct lock *lock)
     struct thread *t = list_entry (e, struct thread, donation_elem);
     if (t->wait_on_lock == lock)
       list_remove (&t->donation_elem);
-  }
-}
-static void
-refresh_priority (void)
-{
-  struct thread *cur = thread_current ();
-
-  cur->priority = cur->init_priority;
-  
-  if (!list_empty (&cur->donations)) {
-    list_sort (&cur->donations, thread_compare_donate_priority, 0);
-
-    struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
-    if (front->priority > cur->priority)
-      cur->priority = front->priority;
   }
 }
