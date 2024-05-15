@@ -316,6 +316,17 @@ thread_yield (void) {
 	do_schedule (THREAD_READY); //THREAD_READY상태로 돌리고, do_schedule로 context switch
 	intr_set_level (old_level); //restores interrupt state
 }
+void 
+test_max_priority (void) 
+{
+    if (list_empty(&ready_list))
+        return;
+
+    struct thread *th = list_entry(list_front(&ready_list), struct thread, elem);
+
+    if (thread_get_priority() < th->priority)
+        thread_yield();
+}
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 static void
@@ -700,17 +711,6 @@ remove_with_lock (struct lock *lock) {
 		if (t->wait_on_lock == lock)
 			list_remove (&t->donation_elem);
     }
-}
-void 
-test_max_priority (void) 
-{
-    if (list_empty(&ready_list))
-        return;
-
-    struct thread *th = list_entry(list_front(&ready_list), struct thread, elem);
-
-    if (thread_get_priority() < th->priority)
-        thread_yield();
 }
 void
 refresh_priority (void) {
