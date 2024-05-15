@@ -327,6 +327,13 @@ test_max_priority (void)
     if (thread_get_priority() < th->priority)
         thread_yield();
 }
+static bool
+thread_compare_donate_priority (const struct list_elem *l, 
+				const struct list_elem *s, void *aux UNUSED)
+{
+	return list_entry (l, struct thread, donation_elem)->priority
+		 > list_entry (s, struct thread, donation_elem)->priority;
+}
 void
 refresh_priority (void) {
     struct thread *cur = thread_current ();
@@ -691,13 +698,6 @@ thread_wakeup (int64_t ticks) {
 	}
 	//global ticks update
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
-}
-static bool
-thread_compare_donate_priority (const struct list_elem *l, 
-				const struct list_elem *s, void *aux UNUSED)
-{
-	return list_entry (l, struct thread, donation_elem)->priority
-		 > list_entry (s, struct thread, donation_elem)->priority;
 }
 void
 donate_priority (void) {
