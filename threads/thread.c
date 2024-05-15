@@ -216,21 +216,7 @@ thread_create (const char *name, int priority,
 
 	return tid;
 }
-void
-refresh_priority (void)
-{
-  struct thread *cur = thread_current ();
 
-  cur->priority = cur->init_priority;
-  
-  if (!list_empty (&cur->donations)) {
-    list_sort (&cur->donations, thread_compare_donate_priority, 0);
-
-    struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
-    if (front->priority > cur->priority)
-      cur->priority = front->priority;
-  }
-}
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -333,12 +319,8 @@ thread_yield (void) {
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
-thread_set_priority (int new_priority) 
-{
-  thread_current ()->init_priority = new_priority;
-  
-  refresh_priority ();
-  thread_test_preemption ();
+thread_set_priority (int new_priority) {
+	thread_current ()->priority = new_priority;
 }
 
 /* Returns the current thread's priority. */
@@ -439,9 +421,6 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 	// init local tick
 	t->local_ticks = 0;
-	  t->init_priority = priority;
-  t->wait_on_lock = NULL;
-  list_init (&t->donations);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -683,35 +662,72 @@ thread_wakeup (int64_t ticks) {
 	//global ticks update
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
 }
-bool
+static bool
 thread_compare_donate_priority (const struct list_elem *l, 
 				const struct list_elem *s, void *aux UNUSED)
 {
 	return list_entry (l, struct thread, donation_elem)->priority
 		 > list_entry (s, struct thread, donation_elem)->priority;
 }
-static void
-donate_priority (void)
-{
-  int depth;
-  struct thread *cur = thread_current ();
+void
+donate_priority (void) {
+    int depth;
+    struct thread *cur = thread_current ();
 
-  for (depth = 0; depth < 8; depth++){
-    if (!cur->wait_on_lock) break;
-      struct thread *holder = cur->wait_on_lock->holder;
-      holder->priority = cur->priority;
-      cur = holder;
-  }
+	/* Nested donation 상황을 대비해 for문을 돌린다 */
+    for (depth = 0; depth < 8; depth++){
+		/* lock을 얻기 기다리는 thread가 아닐 경우 break한다. */
+		if (!cur->wait_on_lock) break;
+		/* 일 경우 최상위 priority를 donate 해준다. */
+		struct thread *holder = cur->wait_on_lock->holder;
+		holder->priority = cur->priority;
+		cur = holder;
+    }
+}
+void
+remove_with_lock (struct lock *lock) {
+    struct list_elem *e;
+    struct thread *cur = thread_current ();
+
+	/* donation 리스트를 순회하며 */
+    for (e = list_begin (&cur->donations); e != list_end (&cur->donations); e = list_next (e)){
+		struct thread *t = list_entry (e, struct thread, donation_elem);
+		/* 인자로 받은 lock을 원해서 donate를 한 경우라면 */
+		if (t->wait_on_lock == lock)
+			list_remove (&t->donation_elem);
+    }
 }
 static void
-remove_with_lock (struct lock *lock)
-{
-  struct list_elem *e;
-  struct thread *cur = thread_current ();
+thread_set_priority (int new_priority) {
+	/* ==================== project1 Prioirity Scheduling ==================== */
+    thread_current ()->init_priority = new_priority;
+    // thread_current ()->priority = new_priority;
+	refresh_priority ();
+	test_max_priority();
+	/* ==================== project1 Prioirity Scheduling ==================== */
+}
+void
+refresh_priority (void) {
+    struct thread *cur = thread_current ();
 
-  for (e = list_begin (&cur->donations); e != list_end (&cur->donations); e = list_next (e)){
-    struct thread *t = list_entry (e, struct thread, donation_elem);
-    if (t->wait_on_lock == lock)
-      list_remove (&t->donation_elem);
-  }
+    cur->priority = cur->init_priority;
+
+	/* donate 받은 priority가 아직 남아있다면 */
+    if (!list_empty (&cur->donations)) {
+		list_sort (&cur->donations, thread_compare_donate_priority, 0);
+
+		/* 그중 가장 높은  priority를 현재 thread의 priority로 설정 */
+    	struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
+		if (front->priority > cur->priority)
+			cur->priority = front->priority;
+    }
+}
+void
+thread_set_priority (int new_priority) {
+	/* ==================== project1 Prioirity Scheduling ==================== */
+    thread_current ()->init_priority = new_priority;
+    // thread_current ()->priority = new_priority;
+	refresh_priority ();
+	test_max_priority();
+	/* ==================== project1 Prioirity Scheduling ==================== */
 }

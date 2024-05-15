@@ -95,11 +95,13 @@ struct thread {
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-	int init_priority;
-    
-    struct lock *wait_on_lock;
-    struct list donations;
-    struct list_elem donation_elem;
+	int init_priority; 
+	/* thread가 현재 얻기 위해 기다리고 있는 lock의 주소로 스레드는 이 lock 이 release 되기를 기다린다. */
+	struct lock *wait_on_lock; 
+	/* 자신에게 priority 를 나누어준 thread들의 리스트이고 */
+	struct list donations; 
+	 /*  donations 리스트를 관리하기 위한 element 로 thread 구조체의 그냥 elem 과 구분하여 사용하도록 한다. */
+	struct list_elem donation_elem;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */

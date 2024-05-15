@@ -202,7 +202,26 @@ lock_acquire (struct lock *lock)
   cur->wait_on_lock = NULL;
   lock->holder = cur;
 }
+static bool
+thread_compare_donate_priority (const struct list_elem *l, 
+				const struct list_elem *s, void *aux UNUSED)
+{
+	return list_entry (l, struct thread, donation_elem)->priority
+		 > list_entry (s, struct thread, donation_elem)->priority;
+}
+void
+lock_release (struct lock *lock) {
+	ASSERT (lock != NULL);
+	ASSERT (lock_held_by_current_thread (lock));
 
+	/* ==================== project1 Priority Donation ==================== */
+    remove_with_lock (lock);
+    refresh_priority ();	
+	/* ==================== project1 Priority Donation ==================== */
+
+	lock->holder = NULL;
+	sema_up (&lock->semaphore);
+}
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
    thread.
