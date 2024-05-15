@@ -144,6 +144,10 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 
-void wake_up (int64_t ticks);
+// long long get_global_ticks (void);
+void thread_wakeup (int64_t ticks);
 void thread_sleep (int64_t thread_sleep_ticks);
+bool sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
+void thread_preempt (void);
+bool sort_ticks (struct list_elem *a, struct list_elem *b, void *aux);
 #endif /* threads/thread.h */

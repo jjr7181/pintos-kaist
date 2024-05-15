@@ -32,7 +32,7 @@ static struct list ready_list;
 static struct list sleep_list; //sleep_list 선언 task1
 
 //global tick선언  task1
-static int64_t global_ticks = __INT64_MAX__;
+static int64_t global_ticks;
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -214,6 +214,8 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	thread_preempt();
+
 	return tid;
 }
 
@@ -247,7 +249,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered (&ready_list, &t->elem, sort_priority, NULL);
+	// list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -312,7 +315,7 @@ thread_yield (void) {
 
 	old_level = intr_disable (); //disables interrupt
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem); //ready_list 끝으로 다시 삽입
+			list_insert_ordered (&ready_list, &curr->elem, sort_priority, NULL);
 	do_schedule (THREAD_READY); //THREAD_READY상태로 돌리고, do_schedule로 context switch
 	intr_set_level (old_level); //restores interrupt state
 }
@@ -321,6 +324,12 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+
+	// ready list 에 바뀐 prioirty보다 높은 priority를 가지는 스레드가 존재 할 수 있기 때문에 preempt
+	thread_preempt();
+
+	//sort according to the changed priority
+	list_sort(&ready_list, sort_priority, NULL);
 }
 
 /* Returns the current thread's priority. */
@@ -602,12 +611,21 @@ allocate_tid (void) {
 }
 
 bool
-sort_ascending (struct list_elem *a, struct list_elem *b, void *aux) {
+sort_ticks (struct list_elem *a, struct list_elem *b, void *aux) {
 	struct thread *a_thread= list_entry(a, struct thread, elem);
 	struct thread *b_thread = list_entry(b, struct thread, elem);
 	
 	return a_thread->local_ticks < b_thread->local_ticks;
 } 
+
+bool
+sort_priority (struct list_elem *a, struct list_elem *b, void *aux)
+{
+	struct thread *a_thread = list_entry(a, struct thread, elem);
+	struct thread *b_thread = list_entry(b, struct thread, elem);
+
+	return a_thread->priority > b_thread->priority;
+}
 
 void
 thread_sleep (int64_t sleep_ticks) {
@@ -619,7 +637,7 @@ thread_sleep (int64_t sleep_ticks) {
 	if (cur != idle_thread)
 	{
 		cur->local_ticks = sleep_ticks; // stores local tick info in the thread struct
-		list_insert_ordered(&sleep_list, &cur->elem, sort_ascending, NULL);
+		list_insert_ordered(&sleep_list, &cur->elem, sort_ticks, NULL);
 		thread_block();
 		//update global_ticks to the smallest local_ticks from the sleep_list
 		global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
@@ -628,26 +646,36 @@ thread_sleep (int64_t sleep_ticks) {
 }
 
 long long
-get_global_ticks () {
+get_global_ticks (void) {
 	return global_ticks;
+}
+
+void
+thread_preempt (void) {
+	struct list_elem *front = list_begin(&ready_list);
+	struct thread *first_thread = list_entry(front, struct thread, elem);
+	// enum intr_level old_level;
+
+	// old_level = intr_disable (); //do_schedule -> yield로 바꾸면서 필요없어짐
+	if(thread_get_priority() < first_thread->priority || thread_current() != idle_thread){
+		thread_yield();
+	}
+	// intr_set_level (old_level); //restores interrupt state
 }
 
 void
 thread_wakeup (int64_t ticks) {
 	struct thread *cur = list_entry(list_begin(&sleep_list), struct thread, elem);
-	enum intr_level old_level;
 
 	//sleep_list가 empty면 global tick update 하지 않고 return
-	if(list_empty(&sleep_list))
+	if(list_empty(&sleep_list) || global_ticks > ticks)
 		return;
 
-	while (cur->local_ticks <= ticks){
-		//disable interrupt
-		// old_level = intr_disable ();
+	while(!list_empty(&sleep_list)){
 		struct list_elem *front = list_begin(&sleep_list);
-		struct thread *t = list_entry(front, struct thread, elem);
+		struct thread *cur = list_entry(front, struct thread, elem);
 	
-		if(t->local_ticks > ticks) return; 
+		if(cur->local_ticks > ticks) return; 
 
 		//put the waken thread into the ready list
 		struct list_elem *waken = list_pop_front (&sleep_list);
@@ -656,9 +684,26 @@ thread_wakeup (int64_t ticks) {
 		thread_unblock (waken_thread);
 		// struct list_elem *waken = list_pop_front (&sleep_list);
 
-		cur = list_entry(list_begin(&sleep_list), struct thread, elem);
-		// intr_set_level (old_level);
+		// cur = list_entry(list_begin(&sleep_list), struct thread, elem);
 	}
+
+	// while (cur->local_ticks <= ticks && &cur->elem != list_end(&sleep_list)){
+	// 	struct list_elem *front = list_begin(&sleep_list);
+	// 	struct thread *t = list_entry(front, struct thread, elem);
+	
+	// 	if(t->local_ticks > ticks) return; 
+
+	// 	//put the waken thread into the ready list
+	// 	struct list_elem *waken = list_pop_front (&sleep_list);
+	// 	struct thread *waken_thread = list_entry(waken, struct thread, elem);	
+	// 	// thread_unblock (list_entry(list_begin(&sleep_list), struct thread, elem));
+	// 	thread_unblock (waken_thread);
+	// 	// struct list_elem *waken = list_pop_front (&sleep_list);
+
+	// 	cur = list_entry(list_begin(&sleep_list), struct thread, elem);
+
+		
+	// }
 	//global ticks update
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
 }
