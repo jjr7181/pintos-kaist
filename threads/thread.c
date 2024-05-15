@@ -327,9 +327,24 @@ test_max_priority (void)
     if (thread_get_priority() < th->priority)
         thread_yield();
 }
+void
+refresh_priority (void) {
+    struct thread *cur = thread_current ();
 
+    cur->priority = cur->init_priority;
+
+	/* donate 받은 priority가 아직 남아있다면 */
+    if (!list_empty (&cur->donations)) {
+		list_sort (&cur->donations, thread_compare_donate_priority, 0);
+
+		/* 그중 가장 높은  priority를 현재 thread의 priority로 설정 */
+    	struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
+		if (front->priority > cur->priority)
+			cur->priority = front->priority;
+    }
+}
 /* Sets the current thread's priority to NEW_PRIORITY. */
-static void
+void
 thread_set_priority (int new_priority) {
 	/* ==================== project1 Prioirity Scheduling ==================== */
     thread_current ()->init_priority = new_priority;
@@ -710,21 +725,5 @@ remove_with_lock (struct lock *lock) {
 		/* 인자로 받은 lock을 원해서 donate를 한 경우라면 */
 		if (t->wait_on_lock == lock)
 			list_remove (&t->donation_elem);
-    }
-}
-void
-refresh_priority (void) {
-    struct thread *cur = thread_current ();
-
-    cur->priority = cur->init_priority;
-
-	/* donate 받은 priority가 아직 남아있다면 */
-    if (!list_empty (&cur->donations)) {
-		list_sort (&cur->donations, thread_compare_donate_priority, 0);
-
-		/* 그중 가장 높은  priority를 현재 thread의 priority로 설정 */
-    	struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
-		if (front->priority > cur->priority)
-			cur->priority = front->priority;
     }
 }
