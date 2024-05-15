@@ -214,6 +214,10 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	/** project1-Priority Scheduling */
+	if(t->priority > thread_current()->priority)
+		thread_yield();
+
 	return tid;
 }
 
@@ -247,7 +251,9 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	/** project1-Priority Scheduling */
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
+	//list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -310,11 +316,24 @@ thread_yield (void) {
 
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable (); //disables interrupt
+	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem); //ready_list 끝으로 다시 삽입
-	do_schedule (THREAD_READY); //THREAD_READY상태로 돌리고, do_schedule로 context switch
-	intr_set_level (old_level); //restores interrupt state
+		//list_push_back (&ready_list, &curr->elem);
+		/** project1-Priority Scheduling */
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL);
+	do_schedule (THREAD_READY);
+	intr_set_level (old_level);
+}
+bool 
+cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+{
+    struct thread*thread_a = list_entry(a, struct thread, elem);
+    struct thread*thread_b = list_entry(b, struct thread, elem);
+
+	if (thread_a == NULL || thread_b == NULL)
+		return false;
+
+    return thread_a->priority > thread_b->priority;
 }
 void 
 test_max_priority (void) 
@@ -327,39 +346,14 @@ test_max_priority (void)
     if (thread_get_priority() < th->priority)
         thread_yield();
 }
-static bool
-thread_compare_donate_priority (const struct list_elem *l, 
-				const struct list_elem *s, void *aux UNUSED)
-{
-	return list_entry (l, struct thread, donation_elem)->priority
-		 > list_entry (s, struct thread, donation_elem)->priority;
-}
-void
-refresh_priority (void) {
-    struct thread *cur = thread_current ();
-
-    cur->priority = cur->init_priority;
-
-	/* donate 받은 priority가 아직 남아있다면 */
-    if (!list_empty (&cur->donations)) {
-		list_sort (&cur->donations, thread_compare_donate_priority, 0);
-
-		/* 그중 가장 높은  priority를 현재 thread의 priority로 설정 */
-    	struct thread *front = list_entry (list_front (&cur->donations), struct thread, donation_elem);
-		if (front->priority > cur->priority)
-			cur->priority = front->priority;
-    }
-}
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	/* ==================== project1 Prioirity Scheduling ==================== */
-    thread_current ()->init_priority = new_priority;
-    // thread_current ()->priority = new_priority;
-	refresh_priority ();
+	thread_current ()->priority = new_priority;
+	/** project1-Priority Scheduling */
 	test_max_priority();
-	/* ==================== project1 Prioirity Scheduling ==================== */
 }
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
@@ -698,32 +692,4 @@ thread_wakeup (int64_t ticks) {
 	}
 	//global ticks update
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
-}
-void
-donate_priority (void) {
-    int depth;
-    struct thread *cur = thread_current ();
-
-	/* Nested donation 상황을 대비해 for문을 돌린다 */
-    for (depth = 0; depth < 8; depth++){
-		/* lock을 얻기 기다리는 thread가 아닐 경우 break한다. */
-		if (!cur->wait_on_lock) break;
-		/* 일 경우 최상위 priority를 donate 해준다. */
-		struct thread *holder = cur->wait_on_lock->holder;
-		holder->priority = cur->priority;
-		cur = holder;
-    }
-}
-void
-remove_with_lock (struct lock *lock) {
-    struct list_elem *e;
-    struct thread *cur = thread_current ();
-
-	/* donation 리스트를 순회하며 */
-    for (e = list_begin (&cur->donations); e != list_end (&cur->donations); e = list_next (e)){
-		struct thread *t = list_entry (e, struct thread, donation_elem);
-		/* 인자로 받은 lock을 원해서 donate를 한 경우라면 */
-		if (t->wait_on_lock == lock)
-			list_remove (&t->donation_elem);
-    }
 }
