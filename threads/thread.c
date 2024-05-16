@@ -139,7 +139,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/* --- 자료구조 초기화 --- */
 	t->init_priority = priority;
 	t->wait_on_lock = NULL;
-	list_init(&t->donations);
+    list_init(&(t->donations));
 
 }
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -365,13 +365,12 @@ test_max_priority (void){
 	}
 }
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void
-thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
-	/** project1-Priority Scheduling */
-	test_max_priority();
+void thread_set_priority(int new_priority)
+{
+    thread_current()->init_priority = new_priority;
+    update_priority_for_donations();
+    preempt_priority();
 }
-
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {

@@ -96,12 +96,11 @@ struct thread {
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	/*---Project 1.4 Priority donation ---*/
-    int64_t wakeup; // 깨어나야 하는 ticks 값
-
-	int init_priority; // thread의 priority는 donation에 의해 매번 바뀔 수 있음. 그러니 맨 처음에 할당받은 priority를 기억해둬야!
-	struct lock *wait_on_lock; // 해당 스레드가 대기하고 있는 lock 자료구조 주소 저장: thread가 원하는 lock을 이미 다른 thread가 점유하고 있으면 lock의 주소를 저장한다.
-	struct list donations; // multiple donation 고려하기 위해 사용: A thread가 B thread에 의해 priority가 변경됐다면 A thread의 list donations에 B 스레드를 기억해놓는다.
-	struct list_elem donation_elem; 
+   	int init_priority;
+    struct lock *wait_on_lock;
+    struct list donations;
+    struct list_elem donation_elem;
+ 	
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -121,12 +120,14 @@ struct thread {
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+bool cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 void thread_init (void);
 void thread_start (void);
 
 void thread_tick (void);
 void thread_print_stats (void);
+void update_priority_before_donations(void);
 
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
@@ -140,6 +141,7 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+void remove_donor(struct lock *lock);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
@@ -151,9 +153,10 @@ int thread_get_load_avg (void);
 
 void do_iret (struct intr_frame *tf);
 void test_max_priority(void);
-bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void wake_up (int64_t ticks);
 void thread_sleep (int64_t thread_sleep_ticks);
 void thread_sleep(int64_t ticks);
 void thread_awake(int64_t ticks);
+void donate_priority(void);
+
 #endif /* threads/thread.h */
