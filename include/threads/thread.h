@@ -90,7 +90,9 @@ struct thread {
 	tid_t tid;                          /* Thread identifier. */
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
+	int priority;
+	int64_t wakeup_ticks;	   // 깨어날 tick
+                       /* Priority. */
 	int64_t local_ticks;								// local tick	s
 
 	/* Shared between thread.c and synch.c. */
@@ -121,6 +123,8 @@ struct thread {
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
 bool cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+void preempt_priority(void);
+bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 void thread_init (void);
 void thread_start (void);
@@ -150,6 +154,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 void do_iret (struct intr_frame *tf);
 void test_max_priority(void);
