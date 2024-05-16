@@ -221,20 +221,6 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-   void
-list_insert_ordered (struct list *list, struct list_elem *elem,
-		list_less_func *less, void *aux) {
-	struct list_elem *e;
-
-	ASSERT (list != NULL);
-	ASSERT (elem != NULL);
-	ASSERT (less != NULL);
-
-	for (e = list_begin (list); e != list_end (list); e = list_next (e))
-		if (less (elem, e, aux))
-			break;
-	return list_insert (e, elem);
-}
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
