@@ -84,7 +84,31 @@ static tid_t allocate_tid (void);
 // Because the gdt will be setup after the thread_init, we should
 // setup temporal gdt first.
 static uint64_t gdt[3] = { 0, 0x00af9a000000ffff, 0x00cf92000000ffff };
+void
+thread_init (void) {
+	ASSERT (intr_get_level () == INTR_OFF);
 
+	/* Reload the temporal gdt for the kernel
+	 * This gdt does not include the user context.
+	 * The kernel will rebuild the gdt with user context, in gdt_init (). */
+	struct desc_ptr gdt_ds = {
+		.size = sizeof (gdt) - 1,
+		.address = (uint64_t) gdt
+	};
+	lgdt (&gdt_ds);
+
+	/* Init the global thread context */
+	lock_init (&tid_lock);
+	list_init (&ready_list);
+	list_init (&sleep_list); //sleep_list 초기화. task1
+	list_init (&destruction_req);
+
+	/* Set up a thread structure for the running thread. */
+	initial_thread = running_thread ();
+	init_thread (initial_thread, "main", PRI_DEFAULT);
+	initial_thread->status = THREAD_RUNNING;
+	initial_thread->tid = allocate_tid ();
+}
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
