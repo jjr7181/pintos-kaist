@@ -257,6 +257,27 @@ void thread_wakeup(int64_t current_ticks)
     }
     intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
+void thread_wakeup(int64_t current_ticks)
+{
+    enum intr_level old_level;
+    old_level = intr_disable(); // 인터럽트 비활성
+
+    struct list_elem *curr_elem = list_begin(&sleep_list);
+    while (curr_elem != list_end(&sleep_list))
+    {
+        struct thread *curr_thread = list_entry(curr_elem, struct thread, elem); // 현재 검사중인 elem의 스레드
+
+        if (current_ticks >= curr_thread->wakeup_ticks) // 깰 시간이 됐으면
+        {
+            curr_elem = list_remove(curr_elem); // sleep_list에서 제거, curr_elem에는 다음 elem이 담김
+            thread_unblock(curr_thread);		// ready_list로 이동
+            preempt_priority();
+        }
+        else
+            break;
+    }
+    intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
+}
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
