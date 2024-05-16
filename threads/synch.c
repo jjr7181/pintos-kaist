@@ -78,10 +78,10 @@ void sema_down(struct semaphore *sema)
     ASSERT(!intr_context());
 
     old_level = intr_disable();
-    while (sema->value == 0) // 세마포어 값이 0인 경우, 세마포어 값이 양수가 될 때까지 대기
+    while (sema->value == 0) 
     {
         list_insert_ordered(&sema->waiters, &thread_current()->elem, cmp_thread_priority, NULL);
-        thread_block(); // 스레드는 대기 상태에 들어감
+        thread_block(); 
     }
     sema->value--; // 세마포어 값이 양수가 되면, 세마포어 값을 1 감소
     intr_set_level(old_level);
@@ -125,12 +125,12 @@ void sema_up(struct semaphore *sema)
     old_level = intr_disable();
     if (!list_empty(&sema->waiters)) // 대기 중인 스레드를 깨움
     {
-        // waiters에 들어있는 스레드가 donate를 받아 우선순위가 달라졌을 수 있기 때문에 재정렬
+      //정렬 쓰니까 갑자기 정답됨
         list_sort(&sema->waiters, cmp_thread_priority, NULL);
         thread_unblock(list_entry(list_pop_front(&sema->waiters), struct thread, elem));
     }
     sema->value++;
-    preempt_priority(); // unblock이 호출되며 ready_list가 수정되었으므로 선점 여부 확인
+    preempt_priority();
 	intr_set_level(old_level);
 }
 
@@ -330,16 +330,14 @@ cond_init (struct condition *cond) {
     struct thread *curr = thread_current();
     if (lock->holder != NULL) // 이미 점유중인 락이라면
     {
-        curr->wait_on_lock = lock; // 현재 스레드의 wait_on_lock으로 지정
-        // lock holder의 donors list에 현재 스레드 추가
+        curr->wait_on_lock = lock; 
         list_insert_ordered(&lock->holder->donations, &curr->donation_elem, cmp_donation_priority, NULL);
-        donate_priority(); // 현재 스레드의 priority를 lock holder에게 상속해줌
+        donate_priority(); //위에서 정렬했으니 여긴 그냥 하는거
     }
 
     sema_down(&lock->semaphore); // lock 점유
 
     curr->wait_on_lock = NULL; // lock을 점유했으니 wait_on_lock에서 제거
-
     lock->holder = thread_current();
 }
 bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)

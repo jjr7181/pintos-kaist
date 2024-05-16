@@ -239,20 +239,26 @@ void thread_wakeup(int64_t current_ticks)
     }
     intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
-void
-thread_awake (int64_t ticks)
+void thread_wakeup(int64_t current_ticks)
 {
-  struct list_elem *e = list_begin (&sleep_list);
+    enum intr_level old_level;
+    old_level = intr_disable(); // 인터럽트 비활성
 
-  while (e != list_end (&sleep_list)){
-    struct thread *t = list_entry (e, struct thread, elem);
-    if (t->wakeup <= ticks){	// 스레드가 일어날 시간이 되었는지 확인
-      e = list_remove (e);	// sleep list 에서 제거
-      thread_unblock (t);	// 스레드 unblock
+    struct list_elem *curr_elem = list_begin(&sleep_list);
+    while (curr_elem != list_end(&sleep_list))
+    {
+        struct thread *curr_thread = list_entry(curr_elem, struct thread, elem); // 현재 검사중인 elem의 스레드
+
+        if (current_ticks >= curr_thread->wakeup_ticks) // 깰 시간이 됐으면
+        {
+            curr_elem = list_remove(curr_elem); // sleep_list에서 제거, curr_elem에는 다음 elem이 담김
+            thread_unblock(curr_thread);		// ready_list로 이동
+            preempt_priority();
+        }
+        else
+            break;
     }
-    else 
-      e = list_next (e);
-  }
+    intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
@@ -276,14 +282,12 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
-   bool cmp_priority (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+ 
+bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
-	struct thread* t_a; 
-	struct thread* t_b;
-
-	t_a = list_entry(a, struct thread, elem);
-	t_b = list_entry(b, struct thread, elem);
-	return ((t_a->priority) > (t_b->priority)) ? true : false;
+    struct thread *st_a = list_entry(a, struct thread, elem);
+    struct thread *st_b = list_entry(b, struct thread, elem);
+    return st_a->priority > st_b->priority;
 }
 void thread_unblock(struct thread *t)
 {
@@ -355,6 +359,7 @@ bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, v
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
 /* 현재 running 중인 스레드를 비활성화 시키고 ready_list에 삽입.*/
+
 void thread_yield(void)
 {
     struct thread *curr = thread_current();
@@ -384,11 +389,6 @@ test_max_priority (void){
 	}
 }
 /* Sets the current thread's priority to NEW_PRIORITY. */
-void thread_set_priority(int new_priority)
-{
-    thread_current()->init_priority = new_priority;
-    preempt_priority();
-}
 void preempt_priority(void)
 {
     if (thread_current() == idle_thread)
@@ -400,6 +400,12 @@ void preempt_priority(void)
     if (curr->priority < ready->priority) // ready_list에 현재 실행중인 스레드보다 우선순위가 높은 스레드가 있으면
         thread_yield();
 }
+void thread_set_priority(int new_priority)
+{
+    thread_current()->init_priority = new_priority;
+    preempt_priority();
+}
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
@@ -774,13 +780,10 @@ thread_wakeup (int64_t ticks) {
 	struct thread *cur = list_entry(list_begin(&sleep_list), struct thread, elem);
 	enum intr_level old_level;
 
-	//sleep_list가 empty면 global tick update 하지 않고 return
 	if(list_empty(&sleep_list))
 		return;
 
 	while (cur->local_ticks <= ticks){
-		//disable interrupt
-		// old_level = intr_disable ();
 		struct list_elem *front = list_begin(&sleep_list);
 		struct thread *t = list_entry(front, struct thread, elem);
 	
@@ -791,11 +794,9 @@ thread_wakeup (int64_t ticks) {
 		struct thread *waken_thread = list_entry(waken, struct thread, elem);	
 		// thread_unblock (list_entry(list_begin(&sleep_list), struct thread, elem));
 		thread_unblock (waken_thread);
-		// struct list_elem *waken = list_pop_front (&sleep_list);
 
 		cur = list_entry(list_begin(&sleep_list), struct thread, elem);
 		// intr_set_level (old_level);
 	}
-	//global ticks update
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
 }
