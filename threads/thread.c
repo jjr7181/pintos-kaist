@@ -68,7 +68,7 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
-
+static struct list sleep_list;
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
 
@@ -222,7 +222,21 @@ thread_create (const char *name, int priority,
 
 	return tid;
 }
+void
+thread_awake (int64_t ticks)
+{
+  struct list_elem *e = list_begin (&sleep_list);
 
+  while (e != list_end (&sleep_list)){
+    struct thread *t = list_entry (e, struct thread, elem);
+    if (t->wakeup <= ticks){	// 스레드가 일어날 시간이 되었는지 확인
+      e = list_remove (e);	// sleep list 에서 제거
+      thread_unblock (t);	// 스레드 unblock
+    }
+    else 
+      e = list_next (e);
+  }
+}
 /* Puts the current thread to sleep.  It will not be scheduled
    again until awoken by thread_unblock().
 
@@ -698,21 +712,21 @@ sort_ascending (struct list_elem *a, struct list_elem *b, void *aux) {
 } 
 
 void
-thread_sleep (int64_t sleep_ticks) {
-	struct thread *cur = thread_current();
-	enum intr_level old_level;
-	
-	
-	old_level = intr_disable (); //disables interrupt
-	if (cur != idle_thread)
-	{
-		cur->local_ticks = sleep_ticks; // stores local tick info in the thread struct
-		list_insert_ordered(&sleep_list, &cur->elem, sort_ascending, NULL);
-		thread_block();
-		//update global_ticks to the smallest local_ticks from the sleep_list
-		global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
-	}
-	intr_set_level (old_level); //restores interrupt state
+thread_sleep (int64_t ticks)
+{
+  struct thread *cur;
+  enum intr_level old_level;
+
+  old_level = intr_disable ();	// 인터럽트 off
+  cur = thread_current ();
+  
+  ASSERT (cur != idle_thread);
+
+  cur->wakeup = ticks;			// 일어날 시간을 저장
+  list_push_back (&sleep_list, &cur->elem);	// sleep_list 에 추가
+  thread_block ();				// block 상태로 변경
+
+  intr_set_level (old_level);	// 인터럽트 on
 }
 
 long long
