@@ -328,12 +328,6 @@ thread_exit (void) {
 	do_schedule (THREAD_DYING);
 	NOT_REACHED ();
 }
-bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
-{
-    struct thread *st_a = list_entry(a, struct thread, elem);
-    struct thread *st_b = list_entry(b, struct thread, elem);
-    return st_a->priority > st_b->priority;
-}
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
