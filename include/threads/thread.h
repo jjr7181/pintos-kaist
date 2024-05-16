@@ -161,7 +161,6 @@ void test_max_priority(void);
 void wake_up (int64_t ticks);
 void thread_sleep (int64_t thread_sleep_ticks);
 void thread_sleep(int64_t ticks);
-void thread_awake(int64_t ticks);
 void donate_priority(void);
 
 #endif /* threads/thread.h */
