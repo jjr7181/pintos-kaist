@@ -203,7 +203,7 @@ tid_t thread_create(const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
-
+	//create수정시 윗부분 삭제 유의...3시간 날림
 	/* Add to run queue. */
 	thread_unblock(t);
 	preempt_priority();

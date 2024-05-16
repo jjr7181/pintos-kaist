@@ -353,7 +353,6 @@ void cond_broadcast(struct condition *cond, struct lock *lock)
 		cond_signal(cond, lock);
 }
 
-// 두 sema 안의 'waiters list 안의 스레드 중 제일 높은 priority'를 비교해서 높으면 true를 반환하는 함수
 bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
 	struct semaphore_elem *sema_a = list_entry(a, struct semaphore_elem, elem);
@@ -368,7 +367,7 @@ bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, voi
 	return root_a->priority > root_b->priority;
 }
 
-// donation_elem의 priority를 기준으로 정렬하는 함수
+//elem의 priority를 기준으로 정렬하는 함수
 bool cmp_donation_priority(const struct list_elem *a,
 						   const struct list_elem *b, void *aux UNUSED)
 {
@@ -377,11 +376,11 @@ bool cmp_donation_priority(const struct list_elem *a,
 	return st_a->priority > st_b->priority;
 }
 
-// 현재 스레드가 원하는 락을 가진 holder에게 현재 스레드의 priority 상속
+//  holder에게 현재 스레드의 priority 상속
 void donate_priority(void)
 {
-	struct thread *curr = thread_current(); // 검사중인 스레드
-	struct thread *holder;					// curr이 원하는 락을 가진드스레드
+	struct thread *curr = thread_current(); 
+	struct thread *holder;				
 
 	int priority = curr->priority;
 
@@ -396,11 +395,10 @@ void donate_priority(void)
 	}
 }
 
-// donors list를 돌면서 현재 release될 락을 기다리고 있던 donors를 삭제
 void remove_donor(struct lock *lock)
 {
-	struct list *donations = &(thread_current()->donations); // 현재 스레드의 donations
-	struct list_elem *donor_elem;							 // 현재 스레드의 donations의 요소
+	struct list *donations = &(thread_current()->donations); 
+	struct list_elem *donor_elem;							
 	struct thread *donor_thread;
 
 	if (list_empty(donations))
@@ -419,14 +417,13 @@ void remove_donor(struct lock *lock)
 	}
 }
 
-// 락을 release하고 나서 priority를 상속 받기 이전 상태로 돌리는 함수
 void update_priority_for_donations(void)
 {
 	struct thread *curr = thread_current();
 	struct list *donations = &(thread_current()->donations);
 	struct thread *donations_root;
 
-	if (list_empty(donations)) // donors가 없으면 (donor가 하나였던 경우)
+	if (list_empty(donations)) 
 	{
 		curr->priority = curr->init_priority; // 최초의 priority로 변경
 		return;
