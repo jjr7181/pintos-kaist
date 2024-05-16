@@ -645,19 +645,6 @@ schedule (void) {
 		thread_launch (next);
 	}
 }
-void donate_priority(void)
-{
-	int depth;
-    struct thread *cur = thread_current();
-    
-    for (depth =0; depth < 8; depth++) {
-    	if (!cur->wait_on_lock) // 기다리는 lock이 없다면 종료
-        	break;
-        struct thread *holder = cur->wait_on_lock->holder;
-        holder->priority = cur->priority;
-        cur = holder;
-    }
-}
 bool
 thread_compare_donate_priority (const struct list_elem *l, 
 				const struct list_elem *s, void *aux UNUSED)

@@ -321,7 +321,7 @@ cond_init (struct condition *cond) {
     struct thread *st_b = list_entry(b, struct thread, donation_elem);
     return st_a->priority > st_b->priority;
 }
-   void lock_acquire(struct lock *lock)
+void lock_acquire(struct lock *lock)
 {
     ASSERT(lock != NULL);
     ASSERT(!intr_context());
