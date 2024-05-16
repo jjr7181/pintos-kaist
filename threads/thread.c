@@ -738,24 +738,31 @@ sort_ascending (struct list_elem *a, struct list_elem *b, void *aux) {
 	
 	return a_thread->local_ticks < b_thread->local_ticks;
 } 
-
-void
-thread_sleep (int64_t ticks)
+bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
-  struct thread *cur;
-  enum intr_level old_level;
-
-  old_level = intr_disable ();	// 인터럽트 off
-  cur = thread_current ();
-  
-  ASSERT (cur != idle_thread);
-
-  cur->wakeup = ticks;			// 일어날 시간을 저장
-  list_push_back (&sleep_list, &cur->elem);	// sleep_list 에 추가
-  thread_block ();				// block 상태로 변경
-
-  intr_set_level (old_level);	// 인터럽트 on
+	struct thread *st_a = list_entry(a, struct thread, elem);
+	struct thread *st_b = list_entry(b, struct thread, elem);
+	return st_a->wakeup_ticks < st_b->wakeup_ticks;
 }
+
+void thread_sleep(int64_t ticks)
+{
+	struct thread *curr;
+	enum intr_level old_level;
+
+	old_level = intr_disable(); // 인터럽트 비활성
+
+	curr = thread_current();	 // 현재 스레드
+	ASSERT(curr != idle_thread); // 현재 스레드가 idle이 아닐 때만
+	curr->wakeup_ticks = ticks;	 // 일어날 시각 저장
+
+	list_insert_ordered(&sleep_list, &curr->elem, cmp_thread_ticks, NULL); // sleep_list에 추가
+
+	thread_block(); // 현재 스레드 재우고 ready_list의 스레드 실행
+
+	intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
+}
+
 
 long long
 get_global_ticks () {
