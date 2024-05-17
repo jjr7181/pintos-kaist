@@ -66,7 +66,7 @@ sema_down (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	while (sema->value == 0) {
-		list_insert_ordered(&sema->waiters, &thread_current()->elem, cmp_priority, NULL);
+		list_insert_ordered(&sema->waiters, &thread_current()->elem, cmp_cond_priority, NULL);
 		thread_block (); 
 	}
 
@@ -114,7 +114,7 @@ sema_up (struct semaphore *sema) {
 
 	// return_donation();
 
-	list_sort(&sema->waiters, cmp_priority, NULL);
+	list_sort(&sema->waiters, cmp_cond_priority, NULL);
 
 	if (!list_empty (&sema->waiters))
 		thread_unblock (list_entry (list_pop_front (&sema->waiters),
@@ -127,16 +127,16 @@ sema_up (struct semaphore *sema) {
 	intr_set_level (old_level);
 }
 
-void return_donation(){
-	struct thread *curr = thread_current();
-	struct thread *donor = list_entry(curr->donations.next, struct thread, elem);
+// void return_donation(){
+// 	struct thread *curr = thread_current();
+// 	struct thread *donor = list_entry(curr->donations.next, struct thread, elem);
 
-	if(curr->donations.next != NULL) {
-		int temp = curr->priority;
-		curr->priority = donor->priority;
-		donor->priority = temp;
-	}
-}
+// 	if(curr->donations.next != NULL) {
+// 		int temp = curr->priority;
+// 		curr->priority = donor->priority;
+// 		donor->priority = temp;
+// 	}
+// }
 
 static void sema_test_helper (void *sema_);
 
@@ -219,20 +219,20 @@ lock_acquire (struct lock *lock) {
 	lock->holder = thread_current ();
 }
 
-void
-donate_priority(struct lock *lock){
-	struct thread *curr = thread_current();
+// void
+// donate_priority(struct lock *lock){
+// 	struct thread *curr = thread_current();
 
-	struct thread *waite_t = list_begin(&lock->semaphore.waiters);
+// 	struct thread *waite_t = list_begin(&lock->semaphore.waiters);
 
-	if(curr->priority < waite_t->priority) {
-		*(lock->holder->donations.next) = waite_t->d_elem;
+// 	if(curr->priority < waite_t->priority) {
+// 		*(lock->holder->donations.next) = waite_t->d_elem;
 
-		int temp_priority = curr->priority;
-		curr->priority = waite_t->priority;
-		waite_t->priority = temp_priority;
-	}
-}
+// 		int temp_priority = curr->priority;
+// 		curr->priority = waite_t->priority;
+// 		waite_t->priority = temp_priority;
+// 	}
+// }
 
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
