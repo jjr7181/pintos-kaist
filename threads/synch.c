@@ -190,45 +190,29 @@ void lock_init(struct lock *lock)
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
-void lock_acquire(struct lock *lock)
-{
-	ASSERT(lock != NULL);
-	ASSERT(!intr_context());
-	ASSERT(!lock_held_by_current_thread(lock));
-
-	struct thread *curr = thread_current();
-	if (lock->holder != NULL) // 이미 점유중인 락이라면
-	{
-		curr->wait_on_lock = lock; // 현재 스레드의 wait_on_lock으로 지정
-		// lock holder의 donors list에 현재 스레드 추가
-		list_insert_ordered(&lock->holder->donations, &curr->donation_elem, cmp_donation_priority, NULL);
-		donate_priority(); // 현재 스레드의 priority를 lock holder에게 상속해줌
-	}
-
-	sema_down(&lock->semaphore); // lock 점유
-
-	curr->wait_on_lock = NULL; // lock을 점유했으니 wait_on_lock에서 제거
-
-	lock->holder = thread_current();
+void
+lock_acquire (struct lock *lock) {
+	ASSERT (lock != NULL);
+	ASSERT (!intr_context ());
+	ASSERT (!lock_held_by_current_thread (lock));
+	
+	sema_down (&lock->semaphore);
+	lock->holder = thread_current ();
 }
-
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
    thread.
 
    This function will not sleep, so it may be called within an
    interrupt handler. */
-bool lock_try_acquire(struct lock *lock)
-{
-	bool success;
+void
+lock_acquire (struct lock *lock) {
+	ASSERT (lock != NULL);
+	ASSERT (!intr_context ());
+	ASSERT (!lock_held_by_current_thread (lock));
 
-	ASSERT(lock != NULL);
-	ASSERT(!lock_held_by_current_thread(lock));
-
-	success = sema_try_down(&lock->semaphore);
-	if (success)
-		lock->holder = thread_current();
-	return success;
+	sema_down (&lock->semaphore);
+	lock->holder = thread_current ();
 }
 
 /* Releases LOCK, which must be owned by the current thread.
@@ -237,18 +221,14 @@ bool lock_try_acquire(struct lock *lock)
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
-void lock_release(struct lock *lock)
-{
-	ASSERT(lock != NULL);
-	ASSERT(lock_held_by_current_thread(lock));
-
-	remove_donor(lock);
-	update_priority_for_donations();
+void
+lock_release (struct lock *lock) {
+	ASSERT (lock != NULL);
+	ASSERT (lock_held_by_current_thread (lock));
 
 	lock->holder = NULL;
-	sema_up(&lock->semaphore);
+	sema_up (&lock->semaphore);
 }
-
 /* Returns true if the current thread holds LOCK, false
    otherwise.  (Note that testing whether some other thread holds
    a lock would be racy.) */

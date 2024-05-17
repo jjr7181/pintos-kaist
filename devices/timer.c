@@ -129,27 +129,32 @@ void timer_print_stats(void)
 }
 
 static void
-timer_interrupt(struct intr_frame *args UNUSED)
-{
+timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
-	thread_tick();
-	if (thread_mlfqs) {
-        mlfqs_increment();
-        if (timer_ticks() % 4 == 0)
-            mlfqs_recalc_priority();
+	thread_tick ();
 
-        if (timer_ticks() % 100 == 0) {
-            mlfqs_load_avg();
-            mlfqs_recalc_recent_cpu();
-        }
-    }
-	
-	if (MIN_alarm_time <= ticks)
+	if (thread_mlfqs) 
 	{
-		thread_wakeup(ticks);
+		mlfqs_increment();
+
+		if (!(ticks % 4)) 
+		{
+			mlfqs_recalc_priority();
+
+			if (!(ticks % TIMER_FREQ)) 
+			{
+				mlfqs_load_avg();
+				mlfqs_recalc_recent_cpu();
+			}
+		}
+    }
+
+	/** project1-Alarm Clock */
+	if (get_next_tick_to_awake() <= ticks)
+	{
+	thread_awake(ticks);
 	}
 }
-
 /* Returns true if LOOPS iterations waits for more than one timer
    tick, otherwise false. */
 static bool

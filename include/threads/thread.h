@@ -86,7 +86,9 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
-
+int niceness;
+	int recent_cpu;
+	struct list_elem all_elem;
 struct thread
 {
 	/* Owned by thread.c. */
@@ -152,7 +154,12 @@ void thread_yield(void);
 void thread_sleep(int64_t ticks);
 void thread_wakeup(int64_t current_ticks);
 bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void *aux);
-
+void mlfqs_priority(struct thread *t);
+void mlfqs_recent_cpu(struct thread *t);
+void mlfqs_load_avg(void);
+void mlfqs_increment(void);
+void mlfqs_recalc_recent_cpu(void);
+void mlfqs_recalc_priority(void);
 int thread_get_priority(void);
 void thread_set_priority(int);
 bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
