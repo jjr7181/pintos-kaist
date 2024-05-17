@@ -149,7 +149,7 @@ thread_tick (void) {
 
 	/* Update statistics. */
 	if (t == idle_thread)
-		idle_ticks++;
+		idle_ticks++; 
 #ifdef USERPROG
 	else if (t->pml4 != NULL)
 		user_ticks++;
@@ -215,6 +215,8 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	priority_preemption();
+
 	return tid;
 }
 
@@ -248,9 +250,11 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	list_insert_ordered (&ready_list, &t->elem, cmp_priority, NULL);
 	t->status = THREAD_READY;
-	intr_set_level (old_level);
+	intr_set_level (old_level); 
+
+	// priority_preemption();
 }
 
 /* Returns the name of the running thread. */
@@ -311,7 +315,8 @@ thread_yield (void) {
 
 	old_level = intr_disable (); // 인터럽트 비활성화 및 이전 인터럽트 상태 반환
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered (&ready_list, &curr->elem, cmp_priority, NULL);
+
 	do_schedule (THREAD_READY); // context switch
 	intr_set_level (old_level); // 인터럽트 상태 되돌리기
 }
@@ -319,7 +324,13 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	if (thread_current () == idle_thread) return;
+
 	thread_current ()->priority = new_priority;
+
+	// list_sort(&ready_list, cmp_priority, NULL);
+
+	priority_preemption();
 }
 
 /* Returns the current thread's priority. */
@@ -359,7 +370,7 @@ thread_get_recent_cpu (void) {
 
    The idle thread is initially put on the ready list by
    thread_start().  It will be scheduled once initially, at which
-   point it initializes idle_thread, "up"s the semaphore passed
+   point it initializes id , "up"s the semaphore passed
    to it to enable thread_start() to continue, and immediately
    blocks.  After that, the idle thread never appears in the
    ready list.  It is returned by next_thread_to_run() as a
@@ -402,7 +413,6 @@ kernel_thread (thread_func *function, void *aux) {
 	thread_exit ();       /* If function() returns, kill the thread. */
 }
 
-
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
@@ -412,6 +422,12 @@ init_thread (struct thread *t, const char *name, int priority) {
 	ASSERT (name != NULL);
 
 	memset (t, 0, sizeof *t);
+
+	/*스레드 초기화할 때 waiters에 넣어주기*/
+	// list_insert_ordered(&tid_lock.semaphore.waiters, &t->elem, cmp_priority, NULL);
+	// t->origin_priority = NULL;
+	// t->donations.next = NULL;
+
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
@@ -670,9 +686,32 @@ insert_ready_list(){
 	struct thread *move_t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
 
 	thread_unblock(move_t);
+
+	priority_preemption();
 }
 
 void
 set_global_tick(){
 	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
+}
+
+
+/* priority 과제 */
+bool
+cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux){
+	struct thread *a_t = list_entry(a, struct thread, elem);
+	struct thread *b_t = list_entry(b, struct thread, elem);
+	return a_t->priority > b_t->priority;
+}
+
+void 
+priority_preemption() {
+	struct thread *curr = thread_current();
+
+	if(list_empty(&ready_list) || thread_current() == idle_thread) return;
+
+	struct thread *ready_t = list_entry(list_begin(&ready_list), struct thread, elem);
+	
+	if (curr->priority < ready_t->priority) 
+		thread_yield();
 }

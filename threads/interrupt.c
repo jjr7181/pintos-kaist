@@ -141,7 +141,7 @@ intr_enable (void) {
 
 	   See [IA32-v2b] "STI" and [IA32-v3a] 5.8.1 "Masking Maskable
 	   Hardware Interrupts". */
-	asm volatile ("sti");
+	asm volatile ("sti"); // set interrupt flag, 마스킹 되어 있는 하드웨어 인터럽트 활성화
 
 	return old_level;
 }
