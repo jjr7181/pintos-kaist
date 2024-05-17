@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "thread.h": "c",
+        "fixed_point.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}

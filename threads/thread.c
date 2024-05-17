@@ -11,6 +11,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "fixed_point.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -367,7 +368,76 @@ void thread_set_priority(int new_priority)
 	update_priority_for_donations();
 	preempt_priority();
 }
+void mlfqs_priority(struct thread *t)
+{
+	if (t != idle_thread) {
+        int rec_by_4 = div_mixed(t->recent_cpu, 4);
+        int nice2 = 2 * t->nice;
+        int to_sub = add_mixed(rec_by_4, nice2);
+        int tmp = sub_mixed(to_sub, (int)PRI_MAX);
+        int pri_result = fp_to_int(sub_fp(0, tmp));
+        if (pri_result < PRI_MIN)
+            pri_result = PRI_MIN;
+        if (pri_result > PRI_MAX)
+            pri_result = PRI_MAX;
+        t->priority = pri_result;
+    }
+}
+void mlfqs_recent_cpu(struct thread *t)
+{
+	if(t!=idle_thread){
+        int load_avg_2 = mult_mixed(load_avg, 2);
+        int load_avg_2_1 = add_mixed(load_avg_2, 1);
+        int frac = div_fp(load_avg_2, load_avg_2_1);
+        int tmp = mult_fp(frac, t->recent_cpu);
+        int ans = add_mixed(tmp, t->nice);
+        if ((ans >> 31) == (-1) >> 31) {
+            ans = 0;
+        }
+        t->recent_cpu = ans;
+	}
+}
+void mlfqs_load(){
+	int a = div_fp(int_to_fp(59), int_to_fp(60));
+    int b = div_fp(int_to_fp(1), int_to_fp(60));
+    int load_avg2 = mult_fp(a, load_avg);
+    int ready_thread = (int)list_size(&ready_list);
+    ready_thread = (thread_current() == idle_thread) ? ready_thread : ready_thread + 1;
+    int ready_thread2 = mult_mixed(b, ready_thread);
+    int result = add_fp(load_avg2, ready_thread2);
+    load_avg = result;
+}
+void mlfqs_one_tick(){
+	if(thread_current!=idle_thread){
+		int current_recent_cpu=thread_current()->recent_cpu;
+		thread_current()->recent_cpu=add_mixed(current_recent_cpu,1);
+	}
+}
+void
+mlfqs_recalculate_recent_cpu ()
+{
+  if(thread_current!=idle_thread){
+  struct list_elem *e;
+  mlfqs_load();
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      mlfqs_recent_cpu (t);
+      mlfqs_priority (t);
+    }
+  }
+}
+void
+mlfqs_repriority ()
+{
+  struct list_elem *e;
 
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e)) {
+    struct thread *t = list_entry (e, struct thread, allelem);
+    mlfqs_calculate_priority (t);
+  }
+}
 /* Returns the current thread's priority. */
 int thread_get_priority(void)
 {

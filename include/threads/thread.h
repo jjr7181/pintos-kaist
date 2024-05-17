@@ -1,6 +1,6 @@
 #ifndef THREADS_THREAD_H
 #define THREADS_THREAD_H
-
+#include"fixed_point.h"
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
@@ -101,6 +101,8 @@ struct thread
 	struct lock *wait_on_lock;
 	struct list donations;
 	struct list_elem donation_elem;
+	FP recent_cpu;											/* used for mlfqs		*/
+	int nice;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -120,13 +122,16 @@ struct thread
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
 extern bool thread_mlfqs;
+int load_avg;
+static struct list all_list;
 
 void thread_init(void);
 void thread_start(void);
-
+void mlfqs_load();
 void thread_tick(void);
 void thread_print_stats(void);
-
+void mlfqs_repriority ();
+void mlfqs_recalculate_recent_cpu ();
 typedef void thread_func(void *aux);
 tid_t thread_create(const char *name, int priority, thread_func *, void *);
 
