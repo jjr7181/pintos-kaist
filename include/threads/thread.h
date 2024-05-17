@@ -4,6 +4,8 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/fixed_point.h"
+
 #ifdef VM
 #include "vm/vm.h"
 #endif
