@@ -20,6 +20,9 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+int64_t MIN_alarm_time = INT64_MAX;
+#define F (1 << 14) 
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -72,7 +75,6 @@ void timer_calibrate(void)
 }
 
 /* Returns the number of timer ticks since the OS booted. */
-// 운영 체제(OS)가 부팅된 이후부터 현재까지 경과한 시간을 타이머 틱(tick) 단위로 반환
 int64_t
 timer_ticks(void)
 {
@@ -85,20 +87,21 @@ timer_ticks(void)
 
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
-// 인자인 then 이후로 경과한 타이머 틱(tick) 수를 반환
 int64_t
 timer_elapsed(int64_t then)
 {
 	return timer_ticks() - then;
 }
 
-/* Suspends execution for approximately TICKS timer ticks. */
-// 타이머 틱(tick) 동안 실행을 일시 중지
+/* 알람시간 = 현재 흐른 ticks + 재울 ticks */
 void timer_sleep(int64_t ticks)
 {
-	int64_t start = timer_ticks(); // 현재 시각
-	ASSERT(intr_get_level() == INTR_ON);
-	thread_sleep(start + ticks); // 깨어야 할 시각
+	thread_sleep(timer_ticks() + ticks);
+}
+
+void wakeup(struct thread *t)
+{
+	thread_unblock(t);
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -125,25 +128,26 @@ void timer_print_stats(void)
 	printf("Timer: %" PRId64 " ticks\n", timer_ticks());
 }
 
-/* Timer interrupt handler. */
 static void
-timer_interrupt (struct intr_frame *args UNUSED)
+timer_interrupt(struct intr_frame *args UNUSED)
 {
-  ticks++;
-  thread_tick ();
+	ticks++;
+	thread_tick();
+	if (thread_mlfqs) {
+        mlfqs_increment();
+        if (timer_ticks() % 4 == 0)
+            mlfqs_recalc_priority();
 
-  if (thread_mlfqs) {
-    
-    if (ticks % 4 == 0) {
-      mlfqs_repriority ();
-      if (ticks % TIMER_FREQ == 0) {
-		mlfqs_recalculate_recent_cpu ();
-        mlfqs_load();
-      }
+        if (timer_ticks() % 100 == 0) {
+            mlfqs_load_avg();
+            mlfqs_recalc_recent_cpu();
+        }
     }
-  }
-
-  thread_awake (ticks);
+	
+	if (MIN_alarm_time <= ticks)
+	{
+		thread_awake(ticks);
+	}
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
