@@ -3,7 +3,8 @@
         "thread.h": "c",
         "fixed_point.h": "c",
         "interrupt.h": "c",
-        "intr-stubs.h": "c"
+        "intr-stubs.h": "c",
+        "random.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

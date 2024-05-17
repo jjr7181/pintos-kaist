@@ -399,6 +399,7 @@ void mlfqs_recent_cpu(struct thread *t)
 
 void mlfqs_load_avg(void)
 {
+    int a = div_fp(int_to_fp(59), int_to_fp(60));
     int b = div_fp(int_to_fp(1), int_to_fp(60));
     int load_avg2 = mult_fp(a, load_avg);
     int ready_thread = (int)list_size(&ready_list);
@@ -406,6 +407,7 @@ void mlfqs_load_avg(void)
     int ready_thread2 = mult_mixed(b, ready_thread);
     int result = add_fp(load_avg2, ready_thread2);
     load_avg = result;
+}
 }
 
 // increment recent_cpu of current thread by 1
