@@ -7,6 +7,7 @@
 #ifdef VM
 #include "vm/vm.h"
 #endif
+typedef int FP;
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -168,7 +169,6 @@ int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
 void do_iret(struct intr_frame *tf);
-typedef int FP;
 extern const int f_const = 1<<14;
 
 int int_to_fp (int n);
