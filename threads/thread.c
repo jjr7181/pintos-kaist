@@ -408,7 +408,6 @@ void mlfqs_load_avg(void)
     int result = add_fp(load_avg2, ready_thread2);
     load_avg = result;
 }
-}
 
 // increment recent_cpu of current thread by 1
 void mlfqs_increment(void) {
