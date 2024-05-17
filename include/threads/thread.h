@@ -91,10 +91,14 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-	int64_t local_ticks;								// local tick	s
+	int origin_priority;								// original priority
+	int64_t local_ticks;								// local ticks
+	struct lock *wait_on_lock;						// wait for which the thread waits
+	struct list donation;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+	struct list_elem d_elem;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -150,4 +154,5 @@ void thread_sleep (int64_t thread_sleep_ticks);
 bool sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
 void thread_preempt (void);
 bool sort_ticks (struct list_elem *a, struct list_elem *b, void *aux);
+void priority_donation (void);
 #endif /* threads/thread.h */

@@ -253,6 +253,8 @@ thread_unblock (struct thread *t) {
 	// list_push_back (&ready_list, &t->elem);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
+
+	
 }
 
 /* Returns the name of the running thread. */
@@ -428,8 +430,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
 
-	// init local tick
-	t->local_ticks = 0;
+	t->origin_priority = priority;
+	t->local_ticks = 0; // init local tick
+	t->wait_on_lock = NULL;
+	list_init (&t->donation); //init donation list
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -638,9 +642,12 @@ thread_sleep (int64_t sleep_ticks) {
 	{
 		cur->local_ticks = sleep_ticks; // stores local tick info in the thread struct
 		list_insert_ordered(&sleep_list, &cur->elem, sort_ticks, NULL);
-		thread_block();
+		
 		//update global_ticks to the smallest local_ticks from the sleep_list
+		//block하고 global tick update하면 안됨
 		global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
+		
+		thread_block();
 	}
 	intr_set_level (old_level); //restores interrupt state
 }
@@ -666,8 +673,11 @@ thread_preempt (void) {
 void
 thread_wakeup (int64_t ticks) {
 	struct thread *cur = list_entry(list_begin(&sleep_list), struct thread, elem);
+	enum intr_level old_level;
+	
 
-	//sleep_list가 empty거나 아직 깨울 thread가 없담녀 return
+	old_level = intr_disable();
+	//sleep_list가 empty거나 아직 깨울 thread가 없다면 return
 	if(list_empty(&sleep_list) || global_ticks > ticks)
 		return;
 
@@ -675,13 +685,14 @@ thread_wakeup (int64_t ticks) {
 		struct list_elem *front = list_begin(&sleep_list);
 		struct thread *cur = list_entry(front, struct thread, elem);
 	
-		if(cur->local_ticks > ticks) return; 
+		if(cur->local_ticks > ticks) break; 
 
 		//unblock하고 pop하면 문제가 생김 왜 why일끼?
 		list_pop_front(&sleep_list);
 		thread_unblock (cur);
-		
-		//global ticks update
-		global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
 	}
+	//global ticks update
+	global_ticks = list_entry(list_begin(&sleep_list), struct thread, elem)->local_ticks;
+
+	intr_set_level (old_level); //restores interrupt state
 }
