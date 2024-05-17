@@ -1,7 +1,8 @@
 {
     "files.associations": {
         "thread.h": "c",
-        "fixed_point.h": "c"
+        "fixed_point.h": "c",
+        "interrupt.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
