@@ -170,5 +170,5 @@ int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
 
 void do_iret(struct intr_frame *tf);
-extern const int f_const = 1<<14;
+const int f_const= 1<<14;
 #endif /* threads/thread.h */
