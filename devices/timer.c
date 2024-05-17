@@ -137,7 +137,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if (ticks % 4 == 0) {
       mlfqs_repriority ();
       if (ticks % TIMER_FREQ == 0) {
-		mlfqs_recalculate_recent_cpu ()
+		mlfqs_recalculate_recent_cpu ();
         mlfqs_load();
       }
     }
