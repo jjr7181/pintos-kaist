@@ -101,8 +101,11 @@ struct thread
 	struct lock *wait_on_lock;
 	struct list donations;
 	struct list_elem donation_elem;
+	struct list_elem allelem;           /* List element for all threads list. */
+
 	FP recent_cpu;											/* used for mlfqs		*/
 	int nice;
+
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
