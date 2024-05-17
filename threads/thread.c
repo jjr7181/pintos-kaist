@@ -612,6 +612,7 @@ void do_iret(struct intr_frame *tf)
    It's not safe to call printf() until the thread switch is
    complete.  In practice that means that printf()s should be
    added at the end of the function. */
+   const int f_const= 1<<14;
 static void
 thread_launch(struct thread *th)
 {
