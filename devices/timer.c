@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 
+#include "lib/kernel/list.h"
 /* See [8254] for hardware details of the 8254 timer chip. */
 
 #if TIMER_FREQ < 19
@@ -87,14 +88,16 @@ timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
 }
 
+
 /* Suspends execution for approximately TICKS timer ticks. */
 void
-timer_sleep (int64_t ticks) {
+timer_sleep (int64_t sleep_ticks) {
 	int64_t start = timer_ticks ();
 
 	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
-		thread_yield ();
+
+	if (timer_elapsed (start) < sleep_ticks) // start 시점에서부터 증가한 시간 < 잠잘 시간
+		thread_sleep(start + sleep_ticks); // argu: 깨어나야 할 시간
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -120,12 +123,22 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
-	thread_tick ();
+	thread_tick();
+
+	/*
+	* 1. 인터럽트가 발생했음으로, tick을 증가시킨다.
+	* 2. 인터럽트가 발생하면, global tick과 tick을 비교해서 wake up 해야 하는지 결정한다.
+	* 2-1. global tick이 tick 보다 크거나 같은지 확인한다.
+	* 2-2. sleep list에서 global tick보다 크거나 같은 모든 쓰레드를 찾는다.
+	* 2-3. 그것을 ready list에 모두 삽입하고 status를 thread_ready로 바꾼다.
+	*/
+
+	wake_up(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
