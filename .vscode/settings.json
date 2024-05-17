@@ -4,7 +4,8 @@
         "fixed_point.h": "c",
         "interrupt.h": "c",
         "intr-stubs.h": "c",
-        "random.h": "c"
+        "random.h": "c",
+        "synch.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }
