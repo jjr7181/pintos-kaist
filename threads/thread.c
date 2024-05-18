@@ -25,8 +25,6 @@
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
 
-/* [ sleep list에 있는 알람시간 중 가장 이른 알람시간 ]
-   가장 이른 알람시간 ≤ 현재 ticks 이면, 깨울 스레드가 없다는 의미이다. */
 extern int64_t MIN_alarm_time;
 
 /* List of processes in THREAD_READY state, that is, processes
