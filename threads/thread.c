@@ -68,6 +68,8 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
+bool cond_sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
+bool sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -325,13 +327,16 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	thread_current ()->origin_priority = new_priority;
 	thread_current ()->priority = new_priority;
-
-	// ready list 에 바뀐 prioirty보다 높은 priority를 가지는 스레드가 존재 할 수 있기 때문에 preempt
-	thread_preempt();
 
 	//sort according to the changed priority
 	list_sort(&ready_list, sort_priority, NULL);
+	
+	update_priority();
+
+	// ready list 에 바뀐 prioirty보다 높은 priority를 가지는 스레드가 존재 할 수 있기 때문에 preempt
+	thread_preempt();
 }
 
 /* Returns the current thread's priority. */
@@ -433,7 +438,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->origin_priority = priority;
 	t->local_ticks = 0; // init local tick
 	t->wait_on_lock = NULL;
-	list_init (&t->donation); //init donation list
+	list_init (&(t->donation)); //init donation list
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

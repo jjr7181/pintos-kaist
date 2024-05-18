@@ -151,8 +151,12 @@ void do_iret (struct intr_frame *tf);
 // long long get_global_ticks (void);
 void thread_wakeup (int64_t ticks);
 void thread_sleep (int64_t thread_sleep_ticks);
-bool sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
 void thread_preempt (void);
-bool sort_ticks (struct list_elem *a, struct list_elem *b, void *aux);
 void priority_donation (void);
+bool sort_ticks (struct list_elem *a, struct list_elem *b, void *aux);
+bool sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
+bool sort_d_priority (struct list_elem *a, struct list_elem *b, void *aux);
+bool cond_sort_priority (struct list_elem *a, struct list_elem *b, void *aux);
+void remove_donor(struct lock *lock);
+void update_priority(void);
 #endif /* threads/thread.h */
