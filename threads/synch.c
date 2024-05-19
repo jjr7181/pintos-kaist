@@ -201,6 +201,7 @@ lock_acquire (struct lock *lock) {
 	if(lock->holder != NULL) {
 		thread_current() -> wait_on_lock = lock;
 		list_push_back(&lock->holder->donations, &thread_current()->d_elem);
+		donate_update(lock);
 		donate_priority(lock);
 	}
 
@@ -213,6 +214,21 @@ lock_acquire (struct lock *lock) {
 
 void
 donate_priority(struct lock *lock){
+	struct thread *curr_t = lock->holder;
+	if(lock->holder == NULL) return;
+
+	// lock->holder->wait_on_lock이 있을 때까지 반복
+
+	while(curr_t->wait_on_lock != NULL){
+		if (curr_t->priority > curr_t->wait_on_lock->holder->priority){
+			curr_t->wait_on_lock->holder->priority = curr_t->priority;
+			curr_t = curr_t->wait_on_lock->holder;
+		}
+	}
+}
+
+void
+donate_update(struct lock *lock){
 	struct thread *lock_t = lock->holder;
 	struct list *donor_list = &lock_t->donations;
 	if(lock->holder == NULL)
@@ -269,7 +285,7 @@ lock_release (struct lock *lock) {
 
 	donor_remove(lock);
 
-	donate_priority(lock);
+	donate_update(lock);
 
 	lock->holder = NULL;
 

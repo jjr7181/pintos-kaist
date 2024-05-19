@@ -326,12 +326,14 @@ void
 thread_set_priority (int new_priority) {
 	if (thread_current () == idle_thread) return;
 
+	if (list_empty(&thread_current()->donations)) {
+		thread_current()->priority = new_priority;
+	}
+
 	thread_current ()->origin_priority = new_priority;
 	list_sort(&ready_list, cmp_priority, NULL);
 
 	priority_preemption();
-
-
 }
 
 /* Returns the current thread's priority. */
@@ -427,6 +429,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	/* 과제 */
 	list_init(&t->donations);
 	t->origin_priority = priority;
+	t->wait_on_lock = NULL;
 
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
