@@ -132,6 +132,7 @@ thread_start (void) {
 	/* Create the idle thread. */
 	struct semaphore idle_started;
 	sema_init (&idle_started, 0);
+
 	thread_create ("idle", PRI_MIN, idle, &idle_started);
 
 	/* Start preemptive thread scheduling. */
@@ -215,8 +216,6 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
-	priority_preemption();
-
 	return tid;
 }
 
@@ -252,6 +251,7 @@ thread_unblock (struct thread *t) {
 	ASSERT (t->status == THREAD_BLOCKED);
 	list_insert_ordered (&ready_list, &t->elem, cmp_priority, NULL);
 	t->status = THREAD_READY;
+	priority_preemption();
 	intr_set_level (old_level); 
 
 	// priority_preemption();
@@ -326,11 +326,12 @@ void
 thread_set_priority (int new_priority) {
 	if (thread_current () == idle_thread) return;
 
-	thread_current ()->priority = new_priority;
-
-	// list_sort(&ready_list, cmp_priority, NULL);
+	thread_current ()->origin_priority = new_priority;
+	list_sort(&ready_list, cmp_priority, NULL);
 
 	priority_preemption();
+
+
 }
 
 /* Returns the current thread's priority. */
@@ -423,10 +424,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 
 	memset (t, 0, sizeof *t);
 
-	/*스레드 초기화할 때 waiters에 넣어주기*/
-	// list_insert_ordered(&tid_lock.semaphore.waiters, &t->elem, cmp_priority, NULL);
-	// t->origin_priority = NULL;
-	// t->donations.next = NULL;
+	/* 과제 */
+	list_init(&t->donations);
+	t->origin_priority = priority;
 
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
@@ -686,8 +686,6 @@ insert_ready_list(){
 	struct thread *move_t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
 
 	thread_unblock(move_t);
-
-	priority_preemption();
 }
 
 void

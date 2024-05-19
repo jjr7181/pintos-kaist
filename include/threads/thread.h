@@ -91,7 +91,13 @@ struct thread {
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
 
+	int origin_priority;
+
 	int64_t local_ticks;				/* 과제) local tick 만들어서 스레드 wake up 시간 저장*/
+
+	struct list donations;				/* 과제) donate 구현 */
+	struct list_elem d_elem;
+	struct lock *wait_on_lock;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
@@ -146,5 +152,7 @@ void do_iret (struct intr_frame *tf);
 bool list_less (const struct list_elem *a, const struct list_elem *b, void *aux);
 void wake_up(int64_t ticks);
 void thread_sleep(int64_t thread_sleep_tick);
+
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 #endif /* threads/thread.h */
