@@ -472,12 +472,8 @@ int thread_get_nice(void)
 	return nice_val;
 }
 
-/* load_avg에 100을 곱해서 반환 */
 int thread_get_load_avg(void)
 {
-	/* load_avg에 100을 곱해서 반환 한다.
-	   해당 과정중에 인터럽트는 비활성되어야 한다. */
-	/* timer_ticks() % TIMER_FREQ == 0 */
 	enum intr_level old_level;
 
 	old_level = intr_disable();
@@ -487,11 +483,8 @@ int thread_get_load_avg(void)
 	return new_load_avg;
 }
 
-/* recent_cpu에 100을 곱해서 반환 */
 int thread_get_recent_cpu(void)
 {
-	/* recent_cpu에 100을 곱해서 반환 한다.
-	   해당 과정중에 인터럽트는 비활성되어야 한다. */
 	enum intr_level old_level;
 
 	old_level = intr_disable();
