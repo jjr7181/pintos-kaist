@@ -164,7 +164,8 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
-
+	char file_name_copy[65];
+	memcpy(file_name_copy, file_name, strlen(file_name)+1); 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
@@ -187,6 +188,7 @@ process_exec (void *f_name) {
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
+	success = load (file_name_copy, &_if);
 }
 
 
@@ -204,6 +206,9 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	while(true){
+		
+	}
 	return -1;
 }
 
@@ -328,7 +333,17 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
+	char *argc_list[65];//64까지 받지말고 그냥  널 대비하여 하나 글자수 추가
+	char *token, *next_ptr;
+	int token_cnt = 0;
+	token=strtok_r(file_name," ",&next_ptr);
+	arg_list[token_count] = token; 
+	
+	while (token != NULL) {
+		token = strtok_r (NULL, " ", &save_ptr);
+		token_cnt++;
+		arg_list[token_cnt] = token;
+	}
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -405,6 +420,11 @@ load (const char *file_name, struct intr_frame *if_) {
 					goto done;
 				break;
 		}
+		success = true;
+
+			done:
+				file_close (file);
+				return success;
 	}
 
 	/* Set up stack. */
@@ -621,6 +641,35 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		upage += PGSIZE;
 	}
 	return true;
+}
+void argument_stack(char **arg_list, int cnt, struct intr_frame *if_) {
+	char *arg_address[65];
+	for (int i = cnt-1; i >= 0; i--) {
+		int argv_len = strlen(arg_list[i]);
+		if_->rsp = if_->rsp - (argv_len ++); 
+		memcpy(if_->rsp, arg_list[i], argv_len + 1); 
+		arg_address[i] = if_->rsp; 
+	}
+
+	while (if_->rsp % 8 != 0) {
+		if_->rsp--;
+		*(uint8_t *)if_->rsp = 0;
+	}
+    
+	for (int i = cnt; i >= 0; i--) { 
+		if_->rsp = if_->rsp - 8;
+		if (i == cnt) { 
+			memset(if_->rsp, 0, sizeof(char **));
+		} else { // stack에 arg_address의 값을 저장
+			memcpy(if_->rsp, &arg_address[i], sizeof(char **));
+		}
+	}
+
+	if_->rsp = if_->rsp - 8; // rsp를 fake address까지 이동시키고
+	memset(if_->rsp, 0, sizeof(void *)); // return address에 0으로 초기화
+
+	if_->R.rdi = cnt;
+	if_->R.rsi = if_->rsp + 8; // arg_address의 맨처음 가리키는 주소값, fake address의 바로 위
 }
 
 /* Create a PAGE of stack at the USER_STACK. Return true on success. */
