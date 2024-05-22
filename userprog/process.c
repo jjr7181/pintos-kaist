@@ -207,7 +207,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	while(true){
-		
+
 	}
 	return -1;
 }
@@ -337,12 +337,12 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *token, *next_ptr;
 	int token_cnt = 0;
 	token=strtok_r(file_name," ",&next_ptr);
-	arg_list[token_count] = token; 
+	argc_list[token_cnt] = token; 
 	
 	while (token != NULL) {
-		token = strtok_r (NULL, " ", &save_ptr);
+		token = strtok_r (NULL, " ", &next_ptr);
 		token_cnt++;
-		arg_list[token_cnt] = token;
+		argc_list[token_cnt] = token;
 	}
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
