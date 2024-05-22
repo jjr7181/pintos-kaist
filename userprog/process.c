@@ -430,7 +430,6 @@ done:
         file_close(file);
     free(fn_copy);
     return success;
-}
 
 
 	/* Set up stack. */
