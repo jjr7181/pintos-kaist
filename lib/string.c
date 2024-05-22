@@ -39,40 +39,6 @@ memmove (void *dst_, const void *src_, size_t size) {
 
 	return dst;
 }
-char * strtok_r (char *s, const char *seperater, char **next_ptr) {
-	char *token;
-
-	ASSERT (seperater != NULL);
-	ASSERT (next_ptr != NULL);
-	if (s == NULL)
-		s = *next_ptr;
-	ASSERT (s != NULL);
-
-	/* Skip any DELIMITERS at our current position. */
-	while (strchr (seperater, *s) != NULL) {
-		/* strchr() will always return nonnull if we're searching
-		   for a null byte, because every string contains a null
-		   byte (at the end). */
-		if (*s == '\0') {
-			*next_ptr = s;
-			return NULL;
-		}
-
-		s++;
-	}
-
-	/* Skip any non-DELIMITERS up to the end of the string. */
-	token = s;
-	while (strchr (seperater, *s) == NULL)
-		s++;
-	if (*s != '\0') {
-		*s = '\0';
-		*next_ptr = s + 1;
-	} else
-		*next_ptr = s;
-	return token;
-}
-
 /* Find the first differing byte in the two blocks of SIZE bytes
    at A and B.  Returns a positive value if the byte in A is
    greater, a negative value if the byte in B is greater, or zero
