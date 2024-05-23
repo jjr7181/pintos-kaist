@@ -320,6 +320,7 @@ static bool validate_segment (const struct Phdr *, struct file *);
 static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes,
 		bool writable);
+static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Loads an ELF executable from FILE_NAME into the current thread.
  * Stores the executable's entry point into *RIP
@@ -513,7 +514,6 @@ validate_segment (const struct Phdr *phdr, struct file *file) {
  * outside of #ifndef macro. */
 
 /* load() helpers. */
-static bool install_page (void *upage, void *kpage, bool writable);
 
 /* Loads a segment starting at offset OFS in FILE at address
  * UPAGE.  In total, READ_BYTES + ZERO_BYTES bytes of virtual
