@@ -226,18 +226,20 @@ process_exit (void) {
 
 /* Free the current process's resources. */
 static void
-process_cleanup (void) {
-	struct thread *curr = thread_current ();
+process_cleanup(void)
+{
+	struct thread *curr = thread_current();
 
 #ifdef VM
-	supplemental_page_table_kill (&curr->spt);
+	supplemental_page_table_kill(&curr->spt);
 #endif
 
 	uint64_t *pml4;
 	/* Destroy the current process's page directory and switch back
 	 * to the kernel-only page directory. */
 	pml4 = curr->pml4;
-	if (pml4 != NULL) {
+	if (pml4 != NULL)
+	{
 		/* Correct ordering here is crucial.  We must set
 		 * cur->pagedir to NULL before switching page directories,
 		 * so that a timer interrupt can't switch back to the
@@ -246,8 +248,8 @@ process_cleanup (void) {
 		 * directory, or our active page directory will be one
 		 * that's been freed (and cleared). */
 		curr->pml4 = NULL;
-		pml4_activate (NULL);
-		pml4_destroy (pml4);
+		pml4_activate(NULL);
+		pml4_destroy(pml4);
 	}
 }
 
@@ -480,11 +482,6 @@ validate_segment(const struct Phdr *phdr, struct file *file)
 }
 
 #ifndef VM
-/* Codes of this block will be ONLY USED DURING project 2.
- * If you want to implement the function for whole project 2, implement it
- * outside of #ifndef macro. */
-
-/* load() helpers. */
 static bool install_page(void *upage, void *kpage, bool writable);
 
 /* Loads a segment starting at offset OFS in FILE at address
