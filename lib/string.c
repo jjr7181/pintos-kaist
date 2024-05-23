@@ -39,6 +39,7 @@ memmove (void *dst_, const void *src_, size_t size) {
 
 	return dst;
 }
+
 /* Find the first differing byte in the two blocks of SIZE bytes
    at A and B.  Returns a positive value if the byte in A is
    greater, a negative value if the byte in B is greater, or zero
@@ -343,4 +344,3 @@ strlcat (char *dst, const char *src, size_t size) {
 	}
 	return src_len + dst_len;
 }
-
