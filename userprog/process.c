@@ -163,6 +163,42 @@ __do_fork(void *aux)
 error:
 	thread_exit();
 }
+void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받았으므로 이중 포인터 사용
+{
+	// 프로그램 이름, 인자 문자열 push
+	for (int i = count - 1; i > -1; i--)
+	{
+		for (int j = strlen(parse[i]); j > -1; j--)
+		{
+			(*rsp)--;					  // 스택 주소 감소
+			**(char **)rsp = parse[i][j]; // 주소에 문자 저장
+		}
+		parse[i] = *(char **)rsp; // parse[i]에 현재 rsp의 값 저장해둠(지금 저장한 인자가 시작하는 주소값)
+	}
+
+	// 정렬 패딩 push
+	int padding = (int)*rsp % 8;
+	for (int i = 0; i < padding; i++)
+	{
+		(*rsp)--;
+		**(uint8_t **)rsp = 0; // rsp 직전까지 값 채움
+	}
+
+	// 인자 문자열 종료를 나타내는 0 push
+	(*rsp) -= 8;
+	**(char ***)rsp = 0;
+
+	// 각 인자 문자열의 주소 push
+	for (int i = count - 1; i > -1; i--)
+	{
+		(*rsp) -= 8; // 다음 주소로 이동
+		**(char ***)rsp = parse[i];
+	}
+
+	// return address push
+	(*rsp) -= 8;
+	**(void ***)rsp = 0;
+}
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
@@ -216,42 +252,6 @@ int process_exec(void *f_name)
 	NOT_REACHED();
 }
 
-void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받았으므로 이중 포인터 사용
-{
-	// 프로그램 이름, 인자 문자열 push
-	for (int i = count - 1; i > -1; i--)
-	{
-		for (int j = strlen(parse[i]); j > -1; j--)
-		{
-			(*rsp)--;					  // 스택 주소 감소
-			**(char **)rsp = parse[i][j]; // 주소에 문자 저장
-		}
-		parse[i] = *(char **)rsp; // parse[i]에 현재 rsp의 값 저장해둠(지금 저장한 인자가 시작하는 주소값)
-	}
-
-	// 정렬 패딩 push
-	int padding = (int)*rsp % 8;
-	for (int i = 0; i < padding; i++)
-	{
-		(*rsp)--;
-		**(uint8_t **)rsp = 0; // rsp 직전까지 값 채움
-	}
-
-	// 인자 문자열 종료를 나타내는 0 push
-	(*rsp) -= 8;
-	**(char ***)rsp = 0;
-
-	// 각 인자 문자열의 주소 push
-	for (int i = count - 1; i > -1; i--)
-	{
-		(*rsp) -= 8; // 다음 주소로 이동
-		**(char ***)rsp = parse[i];
-	}
-
-	// return address push
-	(*rsp) -= 8;
-	**(void ***)rsp = 0;
-}
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a
