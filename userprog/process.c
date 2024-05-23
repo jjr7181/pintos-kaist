@@ -572,6 +572,7 @@ setup_stack(struct intr_frame *if_)
  * with palloc_get_page().
  * Returns true on success, false if UPAGE is already mapped or
  * if memory allocation fails. */
+#ifndef VM
 static bool
 install_page(void *upage, void *kpage, bool writable)
 {
