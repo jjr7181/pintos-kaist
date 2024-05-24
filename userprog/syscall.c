@@ -40,7 +40,44 @@ syscall_init (void) {
 /* The main system call interface */
 void
 syscall_handler (struct intr_frame *f UNUSED) {
+	if (f == NULL) {
+		return;
+	}
 	// TODO: Your implementation goes here.
-	printf ("system call!\n");
+	int number = f->R.rax;
+	printf("syscall handler number: %d\n", number);
+
+	switch (number)
+	{
+	// case SYS_HALT:
+	// 	halt();
+	// 	break;
+	// case SYS_EXIT:
+	// 	exit();
+	// 	break;
+	// case SYS_FORK:
+		
+	// case SYS_EXEC:
+
+	// case SYS_WAIT:
+
+	// case SYS_CREATE:
+	// case SYS_REMOVE:
+	// case SYS_OPEN:
+	// case SYS_FILESIZE:
+	// case SYS_READ:
+	// case SYS_WRITE:
+	// case SYS_SEEK:
+	// case SYS_TELL:
+	// case SYS_CLOSE:
+
+	default:
+		printf("Unknown system call number: %d\n", number);
+		break;
+	}
+
+	printf ("=================================system call!=======================================\n");
 	thread_exit ();
 }
+
+/* halt, exit etc... 여기 만들자 차차차*/

@@ -668,8 +668,13 @@ thread_preempt (void) {
 	struct thread *first_thread = list_entry(front, struct thread, elem);
 	// enum intr_level old_level;
 
+	if (thread_current() == idle_thread)
+		return;
+	if(list_empty(&ready_list))
+		return;
+
 	// old_level = intr_disable (); //do_schedule -> yield로 바꾸면서 필요없어짐
-	if(thread_get_priority() < first_thread->priority || thread_current() != idle_thread){
+	if(thread_get_priority() < first_thread->priority){
 		thread_yield();
 	}
 	// intr_set_level (old_level); //restores interrupt state

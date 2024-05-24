@@ -50,11 +50,15 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	// forward first token as name of new process to thread_create()
+	char *save_ptr;
+	strtok_r(file_name, " ", &save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
-	return tid;
+	return tid; 
 }
 
 /* A thread function that launches first user process. */
@@ -158,6 +162,58 @@ error:
 	thread_exit ();
 }
 
+void argument_stack(char **parse, int count, struct intr_frame *if_) {
+    uintptr_t rsp = if_->rsp;
+    char *arg_addr[count];
+
+    // 인자 문자열을 스택에 푸시
+    for (int i = count - 1; i >= 0; i--) {
+        rsp -= (strlen(parse[i]) + 1);
+        arg_addr[i] = (char *)rsp;
+        memcpy((void *)rsp, parse[i], strlen(parse[i]) + 1);
+    }
+
+		// arg_addr[count] = 0;
+
+    // 8바이트 정렬을 위한 패딩 추가
+    while (rsp % 8 != 0) {
+        rsp--;
+        *(uint8_t *)rsp = 0;
+    }
+
+    // 마지막 NULL 포인터 푸시
+    rsp -= sizeof(char *);
+    *(char **)rsp = 0;
+
+    // 인자 주소를 스택에 푸시
+    for (int i = count - 1; i >= 0; i--) {
+        rsp -= sizeof(char *);
+        *(char **)rsp = arg_addr[i];
+    }
+
+    // // argv 포인터를 스택에 푸시
+    // char **argv = (char **)rsp;
+    // rsp -= sizeof(char **);
+    // *(char ***)rsp = argv;
+
+    // // argc 값을 스택에 푸시
+    // rsp -= sizeof(int);
+    // *(int *)rsp = count;
+
+		if_->R.rsi = if_->rsp; //
+		if_->R.rdi = count; //argc 값을 rdi에 직접 push
+
+    // 종료를 나타내기 위해 0을 푸시
+    rsp -= sizeof(void *);
+    *(void **)rsp = 0;
+
+    // 최종 스택 포인터를 저장
+    if_->rsp = rsp;
+
+		// hex_dump(if_->rsp, if_->rsp, USER_STACK - (uint64_t)if_->rsp, true);
+
+}
+
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int
@@ -176,8 +232,18 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+  char *parse[128];
+  char *token, *save_ptr;
+  int count = 0;
+  for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)){
+    parse[count++] = token;
+	}
 	/* And then load the binary */
 	success = load (file_name, &_if);
+
+  argument_stack(parse, count, &_if);
+
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -204,6 +270,11 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+
+	for (int i = 0; i < 100000000; i++)
+  {
+  }
+
 	return -1;
 }
 
