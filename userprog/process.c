@@ -45,11 +45,11 @@ tid_t process_create_initd(const char *file_name)
 	strlcpy(fn_copy, file_name, PGSIZE);
 
 	// Project 2-1. Pass args - extract program name
-	char *save_ptr;
-	strtok_r(file_name, " ", &save_ptr);
+	char *tok, *save_ptr;
+	tok=strtok_r(file_name, " ", &save_ptr);
 
 	/* Create a new thread to execute FILE_NAME. */
-	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
+	tid = thread_create(tok, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page(fn_copy);
 	return tid;
@@ -158,7 +158,7 @@ int process_exec(void *f_name)
 {
 	char *file_name = f_name;
 	bool success;
-	struct thread *cur = thread_current();
+
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -168,46 +168,38 @@ int process_exec(void *f_name)
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
-	/* We first kill the current context */
 	process_cleanup();
 
-	// Project 2-1. Pass args - parse
-	char *argv[30]; // Q. 테스트는 일단 통과, 사이즈 30이면 충분하겠지? 동적할당 안해도 되겠지?
-	int argc = 0;
-
-	char *token, *save_ptr;
-	token = strtok_r(file_name, " ", &save_ptr);
-	while (token != NULL)
+	char *argu[128];
+	char *token, *parsing;
+	int cnt = 0;
+	/* strtok_r 함수를 통해서 첫 번째로 얻은 값을 token에 저장, 나머지를 parsing에 저장 */
+	/* token이 NULL일때까지 반복 */
+	/* strtok_r 함수에 NULL값을 받아온다면 이전 호출 이후의 남은 문자열에서 토큰을 찾음, 따라서 token에는 다음 문자 저장*/
+	for(token=strtok_r(file_name," ",&parsing);token!=NULL; token=strtok_r(NULL," ",&parsing))
 	{
-		argv[argc] = token;
-		token = strtok_r(NULL, " ", &save_ptr);
-		argc++;
+		argu[cnt++]=token;
 	}
-
+ 
 	/* And then load the binary */
-	success = load(file_name, &_if);
-
-	/* If load failed, quit. */
-	if (!success)
-	{
-		palloc_free_page(file_name);
-		return -1;
-	}
-
-	// Project 2-1. Pass args - load arguments onto the user stack
-	void **rspp = &_if.rsp;
-	load_userStack(argv, argc, rspp);
-	_if.R.rdi = argc;
-	_if.R.rsi = (uint64_t)*rspp + sizeof(void *);
+	success = load (file_name, &_if);
+ 
 	
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)*rspp, true); // #ifdef DEBUG
-	// Q. ptr to number? -> convert to int, uint64_t
-
-	palloc_free_page(file_name);
-
+	argument_stack(argu,cnt,&_if.rsp);
+	/*if 구조체의 필드값 갱신*/
+	_if.R.rdi=cnt;
+	_if.R.rsi=(char*)_if.rsp+8;
+	/*_if.rsp를 시작 주소로하여 메모리 덤프를 생성. 메모리 덤프의 크기는 16진수로*/
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
+ 
+	/* If load failed, quit. */
+	palloc_free_page (file_name);
+	if (!success)
+		return -1;
+ 
 	/* Start switched process. */
-	do_iret(&_if);
-	NOT_REACHED();
+	do_iret (&_if);
+	NOT_REACHED ();
 }
 
 // Load user stack with arguments
