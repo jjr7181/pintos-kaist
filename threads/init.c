@@ -238,20 +238,24 @@ parse_options (char **argv) {
 
 /* Runs the task specified in ARGV[1]. */
 static void
-run_task (char **argv) {
-	const char *task = argv[1];
+run_task(char **argv)
+{
+    const char *task = argv[1]; // argv[0]는 run이고 argv[1]부터 filename 시작되는 문자열
 
-	printf ("Executing '%s':\n", task);
+    printf("Executing '%s':\n", task);
 #ifdef USERPROG
-	if (thread_tests){
-		run_test (task);
-	} else {
-		process_wait (process_create_initd (task));
-	}
+    if (thread_tests)
+    {
+        run_test(task);
+    }
+    else
+    {
+        process_wait(process_create_initd(task));
+    }
 #else
-	run_test (task);
+    run_test(task);
 #endif
-	printf ("Execution of '%s' complete.\n", task);
+    printf("Execution of '%s' complete.\n", task);
 }
 
 /* Executes all of the actions specified in ARGV[]
