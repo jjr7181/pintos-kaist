@@ -213,6 +213,9 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	/* file descriptor 메모리 할당 및 초기화 */
+	// t->fdt = palloc_get_multiple(PAL_ZERO, 2);
+
 	/* Add to run queue. */
 	thread_unblock (t);
 
@@ -430,6 +433,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	list_init(&t->donations);
 	t->origin_priority = priority;
 	t->wait_on_lock = NULL;
+	t->exit_status = 1; // 스레드 종료 안 됨
 
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);

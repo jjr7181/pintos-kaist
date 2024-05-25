@@ -27,6 +27,9 @@ typedef int tid_t;
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
 
+/* 파일 디스크립터 사이즈 */
+// #define FDT_SIZE 64
+
 /* A kernel thread or user process.
  *
  * Each thread structure is stored in its own 4 kB page.  The
@@ -98,6 +101,12 @@ struct thread {
 	struct list donations;				/* 과제) donate 구현 */
 	struct list_elem d_elem;
 	struct lock *wait_on_lock;
+
+	int exit_status;					/* 과제 2) */
+	// file descriptor table 정의하기
+	// struct file *fdt [64];
+	// struct file **fdt;
+	int next_fd;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */

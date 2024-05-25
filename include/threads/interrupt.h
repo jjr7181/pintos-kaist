@@ -34,13 +34,13 @@ struct gp_registers {
 	uint64_t rax;
 } __attribute__((packed));
 
-struct intr_frame {
+struct intr_frame { //레지스터.
 	/* Pushed by intr_entry in intr-stubs.S.
 	   These are the interrupted task's saved registers. */
 	struct gp_registers R;
 	uint16_t es;
 	uint16_t __pad1;
-	uint32_t __pad2;
+	uint32_t __pad2; 
 	uint16_t ds;
 	uint16_t __pad3;
 	uint32_t __pad4;
@@ -57,7 +57,7 @@ struct intr_frame {
 	uint16_t __pad5;
 	uint32_t __pad6;
 	uint64_t eflags;
-	uintptr_t rsp;
+	uintptr_t rsp; // 스택 포인터
 	uint16_t ss;
 	uint16_t __pad7;
 	uint32_t __pad8;

@@ -27,6 +27,22 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 
+/* 과제 */
+void argument_stack(char **arg_stack, int argc, struct intr_frame *_if) ;
+
+/* 과제 file descriptor 구현 */
+int process_add_file (struct file *f) {
+	// 파일 객체에 대한 파일 디스크립터 생성
+}
+
+struct file *process_get_file (int fd) {
+	// 프로세스의 파일 디스크립터 테이블을 검색하여 파일 객체의 주소를 리턴
+}
+
+void process_close_file (int fd) {
+	// 파일 디스크립터에 해당하는 파일을 닫고 해당 엔트리 초기화
+}
+
 /* General process initializer for initd and other process. */
 static void
 process_init (void) {
@@ -40,6 +56,8 @@ process_init (void) {
  * Notice that THIS SHOULD BE CALLED ONCE. */
 tid_t
 process_create_initd (const char *file_name) {
+	// 
+
 	char *fn_copy;
 	tid_t tid;
 
@@ -50,10 +68,15 @@ process_create_initd (const char *file_name) {
 		return TID_ERROR;
 	strlcpy (fn_copy, file_name, PGSIZE);
 
+	char *save_ptr;
+	file_name = strtok_r(file_name, " ", save_ptr);
+
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
 	if (tid == TID_ERROR)
 		palloc_free_page (fn_copy);
+
+	// printf("자식 프로세스 생성 끝\n");
 	return tid;
 }
 
@@ -161,13 +184,14 @@ error:
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int
-process_exec (void *f_name) {
+process_exec (void *f_name) { //실행할 프로세스의 바이너리 파일을 받음
 	char *file_name = f_name;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
 	 * it stores the execution information to the member. */
+	//인터럽트 핸들러가 실행을 완료한 후, CPU가 올바르게 유저 모드로 돌아가도록 보장
 	struct intr_frame _if;
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
@@ -176,11 +200,41 @@ process_exec (void *f_name) {
 	/* We first kill the current context */
 	process_cleanup ();
 
+	// /* 과제 */
+	char *save_ptr, *token;
+	char *arg_stak[64];
+	char argc = 0;
+	for(token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+		arg_stak[argc] = token;
+		argc++;
+	}
+
+	file_name = arg_stak[0];
+
+	// printf("김채윤: %s\n", arg_stak[0]);
+	// printf("김채윤: %s\n", arg_stak[1]);
+	// printf("김채윤: %s\n", file_name);
+
+	// 스택 값 0으로 초기화
+	// memset(&_if, 0, sizeof _if);
+
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (file_name, &_if); //디스크->메모리로 로드
+	// 인터럽트 발생 시 원래 작업 상태를 저장하기 위해 if 전달.
+
+	// printf("실행\n");
+	// printf("주소: %p\n", _if.rsp);
+	// rsp가 user stack top을 가리키고 있으므로, 거기에 parameter를 하나씩 push
+	// 그리고 rsp 주소값 변경. _if.rsp - 4
+
+	/* 과제 */
+	argument_stack(arg_stak, argc, &_if);
+	// hex_dump(_if.rsp, _if.rsp, LOADER_PHYS_BASE - _if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - _if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
+
 	if (!success)
 		return -1;
 
@@ -189,6 +243,59 @@ process_exec (void *f_name) {
 	NOT_REACHED ();
 }
 
+void
+argument_stack(char **arg_stack, int argc, struct intr_frame *_if) {
+	// user stack에 값 넣어주기
+
+	int arg_len = 0;
+	// uint8_t word_align = 0;
+	// int word_align_count = 0;
+	char *argv[argc + 1];
+
+	argv[argc] = 0;
+
+	for(int n = 0 ; n != argc ; n++) {
+		// printf("arg 값:   %s\n", arg_stack[n]);
+
+		arg_len += strlen(arg_stack[n]) + 1;
+	}
+	// printf("arglen  %d\n", arg_len);
+
+	for(int n = argc - 1; n >= 0 ; n--) {
+		int len = strlen(arg_stack[n]) + 1;
+		_if->rsp -= len;
+		argv[n] = _if->rsp;
+		memcpy(_if->rsp, arg_stack[n], len);
+		// printf("김채윤 :  %s\n", _if->rsp);
+	}
+
+	while(_if->rsp % 8 != 0) {
+		_if->rsp -= 1;
+		memset(_if->rsp, 0, 1);
+	}
+
+	for(int n = argc; n >= 0; n--){
+		_if->rsp -= 8;
+		memcpy(_if->rsp, &argv[n], 8);
+	}
+
+	_if->R.rsi = _if->rsp;
+	_if->R.rdi = argc;
+
+	_if->rsp -= sizeof(uintptr_t);
+	memset(_if->rsp, 0, sizeof(uintptr_t));
+
+
+	// hex_dump(_if->rsp, _if->rsp, USER_STACK - _if->rsp, true);
+
+	// printf("r 주소: %p\n", _if->rsp);
+	// _if->rsp = _if->rsp - 8;
+	// printf("r 주소: %p\n", _if->rsp);
+
+	// memcpy(_if->rsp - 4,"get", 4);
+	// _if->rsp -= 4;
+	// printf("김채윤 :  %s\n", _if->rsp);
+}
 
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
@@ -201,9 +308,16 @@ process_exec (void *f_name) {
  * does nothing. */
 int
 process_wait (tid_t child_tid UNUSED) {
+	// printf("wait 시작-------------\n");
+	struct thread *curr = thread_current();
+	// while(curr->exit_status != 0) {}
+	for(int i=0; i<100000000; i++) {}
+
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
+	// printf("무한 루프 끝-------------\n");
+	
 	return -1;
 }
 
@@ -215,7 +329,8 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	// printf ("%s: exit(%d)\n", curr->name, curr->exit_status);
+	// curr->exit_status = 0;
 	process_cleanup ();
 }
 
@@ -412,10 +527,11 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 
 	/* Start address. */
-	if_->rip = ehdr.e_entry;
+	if_->rip = ehdr.e_entry; // 현재 실행 중인 명령어의 메모리 주소를 가리키는 rip를 진입점으로 설정
+	
 
 	/* TODO: Your code goes here.
-	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	 * TODO: Implement argument passing (see project2/argument_passing.html). */ 
 
 	success = true;
 
