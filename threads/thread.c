@@ -212,7 +212,7 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
-	t->max_fd = 2;
+	// t->max_fd = 2;
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -671,6 +671,7 @@ thread_preempt (void) {
 
 	if (thread_current() == idle_thread)
 		return;
+		
 	if(list_empty(&ready_list))
 		return;
 

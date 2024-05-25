@@ -163,56 +163,88 @@ error:
 }
 
 void argument_stack(char **parse, int count, struct intr_frame *if_) {
-    uintptr_t rsp = if_->rsp;
+    // uintptr_t rsp = if_->rsp; //이거쓰면 안댐 
+		// 
     char *arg_addr[count];
 
     // 인자 문자열을 스택에 푸시
     for (int i = count - 1; i >= 0; i--) {
-        rsp -= (strlen(parse[i]) + 1);
-        arg_addr[i] = (char *)rsp;
-        memcpy((void *)rsp, parse[i], strlen(parse[i]) + 1);
+        if_->rsp -= (strlen(parse[i]) + 1);
+        arg_addr[i] = (char *)if_->rsp;
+        memcpy((void *)if_->rsp, parse[i], strlen(parse[i]) + 1);
     }
 
 		// arg_addr[count] = 0;
 
     // 8바이트 정렬을 위한 패딩 추가
-    while (rsp % 8 != 0) {
-        rsp--;
-        *(uint8_t *)rsp = 0;
+    while (if_->rsp % 8 != 0) {
+        if_->rsp--;
+        memset(if_->rsp,0,sizeof(uint8_t));
+
     }
 
     // 마지막 NULL 포인터 푸시
-    rsp -= sizeof(char *);
-    *(char **)rsp = 0;
+    if_->rsp -= sizeof(char *);
+    // *(char **)if_->rsp = 0;
+		memset(if_->rsp,0,sizeof(char*));
 
     // 인자 주소를 스택에 푸시
-    for (int i = count - 1; i >= 0; i--) {
-        rsp -= sizeof(char *);
-        *(char **)rsp = arg_addr[i];
+    for (int i = count-1; i >= 0; i--) {
+        if_->rsp -= sizeof(char *);
+        // *(char **)if_->rsp = arg_addr[i];
+				memcpy(if_->rsp, &arg_addr[i], sizeof(char*));
     }
 
-    // // argv 포인터를 스택에 푸시
-    // char **argv = (char **)rsp;
-    // rsp -= sizeof(char **);
-    // *(char ***)rsp = argv;
-
-    // // argc 값을 스택에 푸시
-    // rsp -= sizeof(int);
-    // *(int *)rsp = count;
-
-		if_->R.rsi = if_->rsp; //
+		if_->R.rsi = if_->rsp; 
 		if_->R.rdi = count; //argc 값을 rdi에 직접 push
 
     // 종료를 나타내기 위해 0을 푸시
-    rsp -= sizeof(void *);
-    *(void **)rsp = 0;
-
-    // 최종 스택 포인터를 저장
-    if_->rsp = rsp;
-
-		// hex_dump(if_->rsp, if_->rsp, USER_STACK - (uint64_t)if_->rsp, true);
-
+    if_->rsp -= sizeof(void *);
+    // *(void **)if_->rsp = 0;
+		memset(if_->rsp,0,sizeof(uintptr_t));
 }
+
+// void
+// argument_stack(char *argv[], int argc, struct intr_frame *if_) {
+//     /* Tokenize the args! */
+//     uintptr_t argv_addr[argc];
+//     // // USER_STACK;
+//     // USER_STACK = 0x47480000 따라서 여기서부터 빼주면 되겠네
+//     // Push the address of each string plus a null pointer sentinel, on the stack, in right-to-left order. 
+//     // 위의 제약조건 때문에 i를 0부터 하지 않고, 끝에서부터 (argc-1) 부터 시작.
+//     for(int i = argc-1; i >= 0; i--) {
+//         size_t len = strlen(argv[i]) + 1;  // Null 종단자 포함해야함. 따라서 +1
+//         if_->rsp -= len;
+//         memcpy(if_->rsp, argv[i], len);
+//         argv_addr[i] = if_->rsp;
+//     }
+//     /* uint8_t 타입은 워드 정렬과 관련된 용도로 일반적으로 사용되는 타입입니다. 
+//     따라서 코드 가독성을 위해 uint8_t 타입을 사용하는 것이 좋습니다. */
+//     /* Word-aligned accesses are faster than unaligned accesses, 
+//     so for best performance round the stack pointer down to a multiple of 8 before the first push. */
+//     /* | Name       | Data |  Type      | */
+//     /* | word-align |   0  |  uint8_t[] | */ 
+//     while ( (if_->rsp % 8) != 0  ) { // 8배수 패딩
+//         if_->rsp--;
+//         memset(if_->rsp, 0, sizeof(uint8_t)); // 그렇다면, 패딩 부분도 모두 0으로 만들어야 푸쉬가 제대로 되는건가..?
+//     }
+//     for (int i=argc; i>=0; i--) {
+//         if_->rsp -= sizeof(uintptr_t);
+//         if (i == argc) {
+//             memset(if_->rsp,0, sizeof( uintptr_t) );
+//         }
+//         else {
+//             memcpy(if_->rsp, &argv_addr[i], sizeof( uintptr_t));
+//         }
+//     }
+//     /* 4 번 단계 */
+//     if_->R.rsi = if_->rsp;
+//     if_->R.rdi = argc;
+//     /* 5번 단계 */
+//     if_->rsp -= sizeof( uintptr_t);
+//     memset(if_->rsp, 0, sizeof( uintptr_t));
+// }
+
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
@@ -242,7 +274,7 @@ process_exec (void *f_name) {
 	success = load (file_name, &_if);
 
   argument_stack(parse, count, &_if);
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
+	// hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page (file_name);
@@ -281,7 +313,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 
-	for (int i = 0; i < 100000000; i++)
+	for (int i = 0; i < 120000000; i++)
   {
   }
 
@@ -296,7 +328,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-	printf("%s: exit(%d)", curr->name, curr->exit_status);
+	printf("%s: exit(%d)\n", curr->name, curr->exit_status);
 	process_cleanup ();
 }
 

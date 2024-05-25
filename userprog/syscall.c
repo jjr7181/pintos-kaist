@@ -51,129 +51,164 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	switch (number)
 	{
 
-	// case SYS_HALT:
-	// 	halt();
-	// 	break;
+	case SYS_HALT:
+		halt();
+		break;
 
-	// case SYS_EXIT:
-	// {
-	// 	int status = f->R.rdi;
-	// 	exit(status);
-	// 	break;
-	// }
-
-	// case SYS_FORK:
-	// {
-
-	// }
-		
-	// case SYS_EXEC:
-	// {
-	// 	char *process_name = f->R.rdi;
-	// 	exec(process_name);
-	// 	break;
-	// }
-
-	// case SYS_WAIT:
-	// {
-
-	// }
-	
-	// case SYS_CREATE:
-	// {
-	// 	char *file_name = f->R.rdi;
-	// 	unsigned *initial_size = f->R.rsi;
-
-	// 	create(file_name, initial_size);
-	// 	break;
-	// }
-	
-	// case SYS_REMOVE:
-	// {
-	// 	char *file_name = f->R.rdi;
-
-	// 	remove(file_name);
-	// 	break;
-	// }
-
-	// case SYS_OPEN:
-	// {
-	// 	char *file_name = f->R.rdi;
-
-	// 	open(file_name);
-	// 	break;
-	// }
-	// // case SYS_FILESIZE:
-	// // case SYS_READ:
-	// // case SYS_WRITE:
-	// // case SYS_SEEK:
-	// // case SYS_TELL:
-	// case SYS_CLOSE:
-
-	default:
-		printf("Unknown system call number: %d\n", number);
+	case SYS_EXIT:
+	{
+		int status = f->R.rdi;
+		exit(status);
 		break;
 	}
 
-	printf ("=================================system call!=======================================\n");
-	thread_exit ();
+	case SYS_FORK:
+	{
+
+	}
+		
+	case SYS_EXEC:
+	{
+		char *process_name = f->R.rdi;
+		f->R.rax = exec(process_name);
+		break;
+	}
+
+	case SYS_WAIT:
+	{
+
+	}
+	
+	case SYS_CREATE:
+	{
+		char *file_name = f->R.rdi;
+		unsigned initial_size = f->R.rsi;
+
+		f->R.rax = create(file_name, initial_size);
+		break;
+	}
+	
+	case SYS_REMOVE:
+	{
+		char *file_name = f->R.rdi;
+
+		f->R.rax = remove(file_name);
+		break;
+	}
+
+	case SYS_OPEN:
+	{
+		char *file_name = f->R.rdi;
+
+		f->R.rax = open(file_name);
+		break;
+	}
+	case SYS_FILESIZE:
+	{
+		int fd = f->R.rdi;
+
+		f->R.rax = filesize(fd);
+		break;
+	}
+	// case SYS_READ:
+	case SYS_WRITE:
+	{
+		int fd = f->R.rdi;
+		const void *buffer =f->R.rsi;
+		unsigned size = f->R.rdx;
+
+		f->R.rax = write(fd, buffer, size);
+		
+	}
+
+	// case SYS_SEEK:
+	// case SYS_TELL:
+	case SYS_CLOSE:
+
+	default:
+		// thread_exit ();
+		break;
+	}
 }
 
 // /* halt, exit etc... 여기 만들자 차차차*/
-// void 
-// halt (void) {	
-// 	power_off();
-// }
+void 
+halt (void) {	
+	power_off();
+}
 
-// //Terminates the current user program, returning status to the kernel
-// void 
-// exit (int status) {
-// 	struct thread *cur = thread_current();
-// 	printf("%s: exit(%d)\n", cur->name, status);
-// 	thread_exit();
-// }
+//Terminates the current user program, returning status to the kernel
+void 
+exit (int status) {
+	struct thread *cur = thread_current();
+	// printf("%s: exit(%d)\n", cur->name, status);
+	thread_exit();
+}
 
-// // cmd_line으로 주어지는 프로세스를 실행시킨다
-// int 
-// exec (const char *cmd_line){
-// 	int result = process_exec(cmd_line);
+// cmd_line으로 주어지는 프로세스를 실행시킨다
+int 
+exec (const char *cmd_line){
+	int result = process_exec(cmd_line);
 
-// 	return result;
-// }
+	return result;
+}
 
-// bool 
-// create(const char *file, unsigned initial_size){
-// 	bool result = filesys_create(file, initial_size);
+bool 
+create(const char *file, unsigned initial_size){
+	bool result = filesys_create(file, initial_size);
 
-// 	return result;
-// }
+	return result;
+}
 
-// //file is removed regardless of whether it is open or closed
-// bool
-// remove(const char *file_name) {
-// 	bool result = filesys_remove(file_name);
+//file is removed regardless of whether it is open or closed
+bool
+remove(const char *file_name) {
+	bool result = filesys_remove(file_name);
 
-// 	return result;
-// }
+	return result;
+}
 
-// int
-// open (const char *file_name){
-// 	struct file *open_file = filesys_open(file_name);
-// 	check_address(open_file);
+int
+open (const char *file_name){
+	struct file *open_file = filesys_open(file_name);
+	check_address(open_file);
 	
-// 	int fd = process_add_file(open_file);
+	int fd = process_add_file(open_file);
 	
-// 	return fd;
-// }
+	return fd;
+}
 
-// void
-// close (){
+int
+filesize (int fd) {
+	struct thread *curr = thread_current();
+	struct file *cur_open_file = curr->fdt[fd];
 
-// }
+	int size = file_length(cur_open_file);
+	return size;
+}
 
-// void
-// check_address (void *addr)
-// {
-// 	if (is_kernel_vaddr(addr))
-// 		exit(-1);
-// }
+int
+write (int fd, const void *buffer, unsigned size){
+
+	if (fd == 1)
+		{
+			putbuf(buffer, size);
+
+			return size; // buffer의 size return 이게 아닐지도?...
+		}
+		else if (fd != 1)
+		{
+			struct thread *curr = thread_current();
+			struct file *open_file = curr->fdt[fd];
+			int bytes_written =	file_write(open_file, buffer, size);
+
+			return bytes_written;
+		}
+}
+
+void
+check_address (void *addr)
+{
+	if (is_kernel_vaddr(addr))
+		exit(-1);
+}
