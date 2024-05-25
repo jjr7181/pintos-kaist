@@ -265,13 +265,13 @@ process_wait (tid_t child_tid UNUSED) {
 }
 
 /* Exit the process. This function is called by thread_exit (). */
-void process_exit(void)
-{
-	/* TODO: Your code goes here.
-	 * TODO: Implement process termination message (see
-	 * TODO: project2/process_termination.html).
-	 * TODO: We recommend you to implement process resource cleanup here. */
-	
+int process_wait(tid_t child_tid UNUSED) {
+	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
+	 * XXX:       to add infinite loop here before
+	 * XXX:       implementing the process_wait. */
+
+	while (true); // Infinite loop for debugging, to be removed later
+
 	struct thread *child = get_child_process(child_tid);
 
 	if (child == NULL)
@@ -282,6 +282,19 @@ void process_exit(void)
 	list_remove(&child->child_elem);
 	sema_up(&child->sema_exit);
 	return exit_status;
+}
+
+/* Helper function to find child process by tid */
+struct thread *get_child_process(tid_t child_tid) {
+	struct thread *cur = thread_current();
+	struct list_elem *e;
+
+	for (e = list_begin(&cur->children); e != list_end(&cur->children); e = list_next(e)) {
+		struct thread *child = list_entry(e, struct thread, child_elem);
+		if (child->tid == child_tid)
+			return child;
+	}
+	return NULL;
 }
 
 /* Free the current process's resources. */

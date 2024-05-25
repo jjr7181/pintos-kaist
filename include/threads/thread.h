@@ -120,7 +120,15 @@ struct thread
 	/* Owned by thread.c. */
 	struct intr_frame tf; /* Information for switching */
 	unsigned magic;		  /* Detects stack overflow. */
+
+	/* Additional fields for process management */
+	int exit_status;
+	struct semaphore sema_wait;
+	struct semaphore sema_exit;
+	struct list_elem child_elem; /* List element for children list */
 };
+
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
