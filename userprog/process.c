@@ -44,7 +44,7 @@ tid_t process_create_initd(const char *file_name)
 {
 	char *fn_copy;
 	tid_t tid;
-
+pa
 	/* Make a copy of FILE_NAME.
 	 * Otherwise there's a race between the caller and load(). */
 	fn_copy = palloc_get_page(0);
@@ -203,9 +203,7 @@ void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받�
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-int process_exec(void *f_name)
-{ // 인자: 실행하려는 이진 파일의 이름
-	char *file_name = f_name;
+{	char *file_name = f_name;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
@@ -252,7 +250,121 @@ int process_exec(void *f_name)
 	do_iret(&_if);
 	NOT_REACHED();
 }
+void load_userStack(char **argv, int argc, void **rspp)
+{
+	// 1. Save argument strings (character by character)
+	// 각 인자 스트링을 스택에 한글자씩 기록
+	for (int i = argc - 1; i >= 0; i--) // 인자 개수 기준 내림차순
+	{
+		int N = strlen(argv[i]); // 각 인자의 길이(argv[i]의 길이) 
+		for (int j = N; j >= 0; j--)
+		{
+			char individual_character = argv[i][j]; // 각 인자의 각 요소 넣기 ('n', 'a', 'm', 'e')
+			(*rspp)--; // 1 byte씩 내리기
+			**(char **)rspp = individual_character; 
+			//*(char *)(_if.rsp) = individual_character를 해주고 싶으니까
+			// char * 형으로 캐스팅한 다음, * 포인터를 통해 해당 값에 접근
+		}
+		argv[i] = *(char **)rspp; // push this address too
+		// 각 인자별 첫 글자의 스택 주소 저장(나중에 쓸 "name"의 첫 주소 저장)
+	}
+	// 2. Word-align padding
+	// 인자들을 모두 저장한 후, 현재 스택 포인터(_if.rsp)의 값이 8배수가 되도록 맞춰주기
+	// 64비트 이므로, 8바이트 단위로 끊어주기
+	// rsp가 8의 배수가 되도록 설정
 
+	// 마지막 인자 주소값을 8로 나눈 나머지만큼 밑으로 이동하여 0으로 초기화
+	int pad = (int)*rspp % 8;
+	for (int k = 0; k < pad; k++)
+	{
+		(*rspp)--;
+		**(uint8_t **)rspp = (uint8_t)0; // 1 byte씩 아래로 이동하면서, 각 칸의 내용을 0으로 초기화
+	}
+
+	// 3. Pointers to the argument strings
+	// 인자들이 stack에 저장된 주소를 stack에 기입하는 것
+	size_t PTR_SIZE = sizeof(char *); // 캐릭터형 포인터 자료구조의 size는 8byte
+
+	(*rspp) -= PTR_SIZE; // 캐릭터형 포인터 사이즈 만큼 빼주기
+	**(char ***)rspp = (char *)0; // 해당 위치 값 0으로 초기화
+
+	for (int i = argc - 1; i >= 0; i--) 
+	{ 
+		(*rspp) -= PTR_SIZE;
+		**(char ***)rspp = argv[i]; // 해당 위치에 argv[i] 기입(i번째 arg의 주소)
+	}
+
+	// 4. Return address를 0으로 초기화(push a fake 'return address')
+	(*rspp) -= PTR_SIZE;
+	**(void ***)rspp = (void *)0;
+}
+int process_exec(void *f_name)
+{
+	char *file_name = f_name;
+	bool success;
+	struct thread *cur = thread_current(); 
+
+	// 1. intr_frame 생성
+	// intr_frame은 실행중인 프로세스의 register 정보, stack pointer, instruction counter를 저장하는 자료구조
+	// interrupt나 systemcall 호출시 사용
+    
+	struct intr_frame _if; // intr_frame 내 실행 시 필요한 정보 담기
+	_if.ds = _if.es = _if.ss = SEL_UDSEG;
+	// ds : data segment, es : more data segment, ss : stack segment
+	_if.cs = SEL_UCSEG;
+	// cs : code segment
+	_if.eflags = FLAG_IF | FLAG_MBS;
+	// eflags : CPU flags
+
+	// 2. process_cleanup() : curr->pml4 초기화
+	// 새로운 실행 파일을 현재 스레드에 담기 전,
+	// 먼저 현재 프로세스에 담긴 context 지워주기(=현재 프로세스에 할당된 page directory 지우기)
+	process_cleanup(); //실행하던 프로세스 초기화하고, 실행하려는 파일로 덮어쓰기
+
+	// Project 2-1. Pass args - parse
+	// 3. argument parse -> *argv[30]에 저장
+	char *argv[30]; 
+	int argc = 0;
+
+	char *token, *save_ptr;
+	token = strtok_r(file_name, " ", &save_ptr); // " "을 기준으로 앞의 내용은 file_name에 저장하고, 
+	// " " 뒤의 내용은 save_ptr에 저장
+	while (token != NULL)
+	{
+		argv[argc] = token; // token에 있는 주소값을 argv[argc]에 넣기
+		token = strtok_r(NULL, " ", &save_ptr); // 처음 이후의 strtok_r()에서는 첫인자로 NULL을 입력
+		// 토큰 자체를 NULL 캐릭터로 옮겨 놓은 후, 캐릭터 라인 다음의 토큰의 선두의 포인터로 돌려줌
+		// 토큰이 없어지면, NULL 포인터를 돌려줌
+		argc++;
+	}
+
+	// 4. load() -> file 실행(_if.rsp -> 유저 스택 할당, _if.rip -> 스택 포인터 할당) 
+	// rip는 현재 명령 실행 주소를 저장하는 레지스터
+	success = load(file_name, &_if);
+
+	// file_name은 프로그램 파일 이름을 받기 위해 만든 임시 변수이므로, 
+	// load 종료 시 해당 메모리 반환해야함
+	if (!success)
+	{
+		palloc_free_page(file_name);
+		return -1;
+	}
+
+	// load 성공한 경우, load_userStack() 통해 user stack에 인자 저장
+	// Project 2-1. Pass args - load arguments onto the user stack
+	// 5. 인자들을 user stack에 넘기기
+	void **rspp = &_if.rsp; //rsp : 현재 스택 주소(스택 맨 위쪽의 주소)
+	load_userStack(argv, argc, rspp);
+	_if.R.rdi = argc; //rdi : 목적지(destination)
+	_if.R.rsi = (uint64_t)*rspp + sizeof(void *); // rsi : 출발지(source)
+
+	palloc_free_page(file_name); 
+
+	// load가 성공적으로 된 경우, context_switching 실시
+	// 6. do_iret 실행(intr_frame 정보를 가지고 launch thread)
+	do_iret(&_if);
+	NOT_REACHED();
+}
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
  * exception), returns -1.  If TID is invalid or if it was not a
