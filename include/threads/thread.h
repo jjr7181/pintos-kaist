@@ -123,8 +123,6 @@ struct thread
 
 	/* Additional fields for process management */
 	int exit_status;
-	struct semaphore sema_wait;
-	struct semaphore sema_exit;
 	struct list_elem child_elem; /* List element for children list */
 };
 
