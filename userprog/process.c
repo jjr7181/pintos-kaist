@@ -271,26 +271,17 @@ void process_exit(void)
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
+	
+	struct thread *child = get_child_process(child_tid);
 
-	struct thread *cur = thread_current();
+	if (child == NULL)
+		return -1;
 
-	// P2-4 Close all opened files
-	for (int i = 0; i < FDCOUNT_LIMIT; i++)
-	{
-		close(i);
-	}
-	//palloc_free_page(cur->fdTable);
-	palloc_free_multiple(cur->fdTable, FDT_PAGES); // multi-oom
-
-	// P2-5 Close current executable run by this process
-	file_close(cur->running);
-
-	process_cleanup();
-
-	// Wake up blocked parent
-	sema_up(&cur->wait_sema);
-	// Postpone child termination until parents receives its exit status with 'wait'
-	sema_down(&cur->free_sema);
+	sema_down(&child->sema_wait);
+	int exit_status = child->exit_status;
+	list_remove(&child->child_elem);
+	sema_up(&child->sema_exit);
+	return exit_status;
 }
 
 /* Free the current process's resources. */
