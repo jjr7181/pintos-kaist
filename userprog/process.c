@@ -154,7 +154,78 @@ error:
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-int process_exec(void *f_name)
+int
+process_exec (void *f_name) {	// f_name = 'args-single onearg'
+	char *file_name = f_name;
+	bool success;
+
+	struct intr_frame _if;
+	_if.ds = _if.es = _if.ss = SEL_UDSEG;
+	_if.cs = SEL_UCSEG;
+	_if.eflags = FLAG_IF | FLAG_MBS;
+
+	/* We first kill the current context */
+	process_cleanup ();
+
+	/* And then load the binary */
+	// file_name : 프로그램(실행파일) 이름
+	success = load (file_name, &_if);
+
+	/* If load failed, quit. */
+	palloc_free_page (file_name);
+	if (!success)	//메모리 적재 실패시 -1 반환
+		return -1;
+
+	hex_dump(_if.rsp,_if.rsp,USER_STACK-_if.rsp,true);
+	
+	/* Start switched process. */
+	// do interrupt return
+	do_iret (&_if);
+	NOT_REACHED ();
+}
+void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
+	int i,j;
+	int cnt=0;
+	int start_addr=if_->rsp;
+
+	for (int i=idx-1; i>-1; i--)
+	{
+		cnt+=strlen(arg_list[i])+1;
+		for (j=strlen(arg_list[i]); j>-1 ; j--)
+		{
+			if_->rsp=if_->rsp-1;
+			memset(if_->rsp, arg_list[i][j], sizeof(char));
+		
+		}
+	
+		if (i==0){
+	
+		/* word-align*/
+		int align = 8 - (cnt % 8);
+		for (int k=0; k < align ; k++)
+		{
+			if_->rsp=if_->rsp-1;
+			memset(if_->rsp, 0, sizeof(char));
+		}
+
+		for (i=idx; i>-1; i--)
+		{
+			if_->rsp = if_->rsp-8;
+
+			if (i==idx)
+				memset(if_->rsp, 0, sizeof(char *));
+			else {
+				start_addr=start_addr-strlen(arg_list[i])-1;
+				memcpy(if_->rsp, &start_addr, sizeof(start_addr));
+			}
+		}
+		if_->rsp = if_->rsp-8;
+		memset(if_->rsp, 0, sizeof(void *));
+		if_->R.rdi=idx;
+		if_->R.rsi=if_->rsp + 8; 
+		}
+	}
+}
 {
 	char *file_name = f_name;
 	bool success;
@@ -395,7 +466,19 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * and its initial stack pointer into *RSP.
  * Returns true if successful, false otherwise. */
 static bool
-load (const char *file_name, struct intr_frame *if_) {
+load (const char *file_name, struct intr_frame *if_) { // file_name = 'args-single onearg'
+	/* parsing */
+	char *token, *save_ptr;
+    char *arg_list[100];
+    int idx=0;
+	for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+    {
+        arg_list[idx]=token;
+		idx++;
+    }
+
+	memcpy(file_name,arg_list[0],strlen(arg_list[0])+1);
+
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
 	struct file *file = NULL;
@@ -404,12 +487,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	int i;
 
 	/* Allocate and activate page directory. */
+	/* 페이지 디렉토리 생성 */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
 		goto done;
+	/* 페이지 테이블 활성화 */
 	process_activate (thread_current ());
 
 	/* Open executable file. */
+	/* 프로그램파일 Open */
 	file = filesys_open (file_name);
 	if (file == NULL) {
 		printf ("load: %s: open failed\n", file_name);
@@ -417,6 +503,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Read and verify executable header. */
+	/* ELF파일의 헤더정보를 읽어와 저장*/
 	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
 			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
 			|| ehdr.e_type != 2
@@ -431,6 +518,7 @@ load (const char *file_name, struct intr_frame *if_) {
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
 	for (i = 0; i < ehdr.e_phnum; i++) {
+		/* 배치정보를 읽어와 저장. */
 		struct Phdr phdr;
 
 		if (file_ofs < 0 || file_ofs > file_length (file))
@@ -460,17 +548,18 @@ load (const char *file_name, struct intr_frame *if_) {
 					uint64_t page_offset = phdr.p_vaddr & PGMASK;
 					uint32_t read_bytes, zero_bytes;
 					if (phdr.p_filesz > 0) {
-						/* Normal segment.
-						 * Read initial part from disk and zero the rest. */
-						read_bytes = page_offset + phdr.p_filesz;
-						zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
+					/* Normal segment.
+					 * Read initial part from disk and zero the rest. */
+					read_bytes = page_offset + phdr.p_filesz;
+					zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
 								- read_bytes);
 					} else {
-						/* Entirely zero.
-						 * Don't read anything from disk. */
-						read_bytes = 0;
-						zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
+					/* Entirely zero.
+					 * Don't read anything from disk. */
+					read_bytes = 0;
+					zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
 					}
+					/* 배치정보를통해 파일을 메모리에 적재. */
 					if (!load_segment (file, file_page, (void *) mem_page,
 								read_bytes, zero_bytes, writable))
 						goto done;
@@ -482,11 +571,15 @@ load (const char *file_name, struct intr_frame *if_) {
 	}
 
 	/* Set up stack. */
+	// 스택 초기화
 	if (!setup_stack (if_))
 		goto done;
 
 	/* Start address. */
+	// text세그먼트 시작 주소
 	if_->rip = ehdr.e_entry;
+
+	argument_stack(arg_list,idx,if_);
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
@@ -495,6 +588,7 @@ load (const char *file_name, struct intr_frame *if_) {
 
 done:
 	/* We arrive here whether the load is successful or not. */
+	file_close (file);
 	return success;
 }
 
