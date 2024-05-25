@@ -7,6 +7,8 @@
 #include "userprog/gdt.h"
 #include "threads/flags.h"
 #include "intrinsic.h"
+#include "userprog/process.h" //exec system call에서 process_exec 사용하기 위해 include
+
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -43,32 +45,69 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	if (f == NULL) {
 		return;
 	}
-	// TODO: Your implementation goes here.
-	int number = f->R.rax;
-	printf("syscall handler number: %d\n", number);
+	uint64_t number = f->R.rax;
+	// printf("syscall handler number: %d\n", number);
 
 	switch (number)
 	{
+
 	// case SYS_HALT:
 	// 	halt();
 	// 	break;
+
 	// case SYS_EXIT:
-	// 	exit();
+	// {
+	// 	int status = f->R.rdi;
+	// 	exit(status);
 	// 	break;
+	// }
+
 	// case SYS_FORK:
+	// {
+
+	// }
 		
 	// case SYS_EXEC:
+	// {
+	// 	char *process_name = f->R.rdi;
+	// 	exec(process_name);
+	// 	break;
+	// }
 
 	// case SYS_WAIT:
+	// {
 
+	// }
+	
 	// case SYS_CREATE:
+	// {
+	// 	char *file_name = f->R.rdi;
+	// 	unsigned *initial_size = f->R.rsi;
+
+	// 	create(file_name, initial_size);
+	// 	break;
+	// }
+	
 	// case SYS_REMOVE:
+	// {
+	// 	char *file_name = f->R.rdi;
+
+	// 	remove(file_name);
+	// 	break;
+	// }
+
 	// case SYS_OPEN:
-	// case SYS_FILESIZE:
-	// case SYS_READ:
-	// case SYS_WRITE:
-	// case SYS_SEEK:
-	// case SYS_TELL:
+	// {
+	// 	char *file_name = f->R.rdi;
+
+	// 	open(file_name);
+	// 	break;
+	// }
+	// // case SYS_FILESIZE:
+	// // case SYS_READ:
+	// // case SYS_WRITE:
+	// // case SYS_SEEK:
+	// // case SYS_TELL:
 	// case SYS_CLOSE:
 
 	default:
@@ -80,4 +119,61 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	thread_exit ();
 }
 
-/* halt, exit etc... 여기 만들자 차차차*/
+// /* halt, exit etc... 여기 만들자 차차차*/
+// void 
+// halt (void) {	
+// 	power_off();
+// }
+
+// //Terminates the current user program, returning status to the kernel
+// void 
+// exit (int status) {
+// 	struct thread *cur = thread_current();
+// 	printf("%s: exit(%d)\n", cur->name, status);
+// 	thread_exit();
+// }
+
+// // cmd_line으로 주어지는 프로세스를 실행시킨다
+// int 
+// exec (const char *cmd_line){
+// 	int result = process_exec(cmd_line);
+
+// 	return result;
+// }
+
+// bool 
+// create(const char *file, unsigned initial_size){
+// 	bool result = filesys_create(file, initial_size);
+
+// 	return result;
+// }
+
+// //file is removed regardless of whether it is open or closed
+// bool
+// remove(const char *file_name) {
+// 	bool result = filesys_remove(file_name);
+
+// 	return result;
+// }
+
+// int
+// open (const char *file_name){
+// 	struct file *open_file = filesys_open(file_name);
+// 	check_address(open_file);
+	
+// 	int fd = process_add_file(open_file);
+	
+// 	return fd;
+// }
+
+// void
+// close (){
+
+// }
+
+// void
+// check_address (void *addr)
+// {
+// 	if (is_kernel_vaddr(addr))
+// 		exit(-1);
+// }

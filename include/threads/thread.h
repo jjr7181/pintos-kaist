@@ -93,12 +93,17 @@ struct thread {
 	int priority;                       /* Priority. */
 	int origin_priority;								// original priority
 	int64_t local_ticks;								// local ticks
-	struct lock *wait_on_lock;						// wait for which the thread waits
+	struct lock *wait_on_lock;					// wait for which the thread waits
 	struct list donation;
+	int exit_status;										// 초기화 해줘야댐
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	struct list_elem d_elem;
+
+	// file descriptor table
+	struct file *fdt[130];
+	unsigned int max_fd; //needs to be initialized
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

@@ -242,7 +242,6 @@ process_exec (void *f_name) {
 	success = load (file_name, &_if);
 
   argument_stack(parse, count, &_if);
-
 	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
 	/* If load failed, quit. */
@@ -255,6 +254,17 @@ process_exec (void *f_name) {
 	NOT_REACHED ();
 }
 
+int
+process_add_file (struct file *f)
+{
+	struct thread *curr = thread_current();
+	unsigned int file_index = curr->max_fd;
+
+	curr->fdt[file_index] = f;
+	curr->max_fd += 1;
+
+	return curr->max_fd;
+}
 
 /* Waits for thread TID to die and returns its exit status.  If
  * it was terminated by the kernel (i.e. killed due to an
@@ -286,7 +296,7 @@ process_exit (void) {
 	 * TODO: Implement process termination message (see
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
-
+	printf("%s: exit(%d)", curr->name, curr->exit_status);
 	process_cleanup ();
 }
 
