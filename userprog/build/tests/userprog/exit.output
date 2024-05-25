@@ -12,16 +12,15 @@ Formatting file system...done.
 Boot complete.
 Putting 'exit' into the file system...
 Executing 'exit':
-000000004747ffe0  00 00 00 00 00 00 00 00-fb ff 47 47 00 00 00 00 |..........GG....|
-000000004747fff0  00 00 00 00 00 00 00 00-00 00 00 65 78 69 74 00 |...........exit.|
-system call!
+(exit) begin
+exit: exit(57)
 Execution of 'exit' complete.
-Timer: 77 ticks
-Thread: 30 idle ticks, 42 kernel ticks, 6 user ticks
+Timer: 121 ticks
+Thread: 30 idle ticks, 91 kernel ticks, 1 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes
 hd1:0: 102 reads, 0 writes
-Console: 945 characters output
+Console: 791 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...
