@@ -1,11 +1,17 @@
-#include "userprog/syscall.h"
-#include <stdio.h>
-#include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/loader.h"
-#include "userprog/gdt.h"
+#include "threads/palloc.h"
 #include "threads/flags.h"
+#include "threads/vaddr.h"
+#include "userprog/gdt.h"
+#include "userprog/process.h"
+#include "userprog/syscall.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include <list.h>
+#include <stdio.h>
+#include <syscall-nr.h>
 #include "intrinsic.h"
 
 void syscall_entry (void);
@@ -43,4 +49,22 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	printf ("system call!\n");
 	thread_exit ();
+}
+
+// Project 2-2. syscalls
+
+/* Terminates Pintos by calling power_off(). No return. */
+void halt(void)
+{
+	power_off();
+}
+
+/* End current thread, record exit statusNo return. */
+void exit(int status)
+{
+	struct thread *cur = thread_current();
+	cur->exit_status = status;
+
+	printf("%s: exit(%d)\n", thread_name(), status); // Process Termination Message
+	thread_exit();
 }
