@@ -151,7 +151,40 @@ __do_fork (void *aux) {
 error:
 	thread_exit ();
 }
+void argument_stack(char **parse, int count, void **esp) {
+  
+  char *argv_address[count];
+  uint8_t size = 0;
 
+	// * argv[i] 문자열
+	for (int i = count - 1; -1 < i; i--) {
+		*esp -= (strlen(parse[i]) + 1);
+		memcpy(*esp, parse[i], strlen(parse[i]) + 1);
+		size += strlen(parse[i]) + 1;
+		argv_address[i] = *esp;
+	}
+
+	if (size % 8) {
+		for (int i = (8 - (size % 8)); 0 < i; i--) {
+			*esp -= 1;
+		**(char **)esp = 0;
+	}
+  }
+
+  *esp -= 8;
+  **(char **)esp = 0;
+
+  // * argv[i] 주소
+	for (int i = count - 1; -1 < i; i--) {
+		*esp = *esp - 8;
+		memcpy(*esp, &argv_address[i], strlen(&argv_address[i]));
+	}
+
+	// * return address(fake)
+	*esp = *esp - 8;
+	**(char **)esp = 0;
+
+}
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int process_exec(void *f_name) {
@@ -188,6 +221,7 @@ int process_exec(void *f_name) {
 
 	/* And then load the binary */
 	success = load(file_name, &_if);
+	hex_dump(_if.rsp, _if.rsp, KERN_BASE - _if.rsp, true);
 
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
@@ -265,36 +299,32 @@ process_wait (tid_t child_tid UNUSED) {
 }
 
 /* Exit the process. This function is called by thread_exit (). */
-int process_wait(tid_t child_tid UNUSED) {
-	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
-	 * XXX:       to add infinite loop here before
-	 * XXX:       implementing the process_wait. */
+void process_exit(void)
+{
+	/* TODO: Your code goes here.
+	 * TODO: Implement process termination message (see
+	 * TODO: project2/process_termination.html).
+	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	while (true); // Infinite loop for debugging, to be removed later
-
-	struct thread *child = get_child_process(child_tid);
-
-	if (child == NULL)
-		return -1;
-
-	sema_down(&child->sema_wait);
-	int exit_status = child->exit_status;
-	list_remove(&child->child_elem);
-	sema_up(&child->sema_exit);
-	return exit_status;
-}
-
-/* Helper function to find child process by tid */
-struct thread *get_child_process(tid_t child_tid) {
 	struct thread *cur = thread_current();
-	struct list_elem *e;
 
-	for (e = list_begin(&cur->children); e != list_end(&cur->children); e = list_next(e)) {
-		struct thread *child = list_entry(e, struct thread, child_elem);
-		if (child->tid == child_tid)
-			return child;
+	// P2-4 Close all opened files
+	for (int i = 0; i < FDCOUNT_LIMIT; i++)
+	{
+		close(i);
 	}
-	return NULL;
+	//palloc_free_page(cur->fdTable);
+	palloc_free_multiple(cur->fdTable, FDT_PAGES); // multi-oom
+
+	// P2-5 Close current executable run by this process
+	file_close(cur->running);
+
+	process_cleanup();
+
+	// Wake up blocked parent
+	sema_up(&cur->wait_sema);
+	// Postpone child termination until parents receives its exit status with 'wait'
+	sema_down(&cur->free_sema);
 }
 
 /* Free the current process's resources. */
@@ -399,37 +429,35 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * and its initial stack pointer into *RSP.
  * Returns true if successful, false otherwise. */
 static bool
-load(const char *file_name, struct intr_frame *if_) { // file_name = 'args-single onearg'
-    /* parsing */
-    char *token, *save_ptr;
-    char *arg_list[100];
-    int idx = 0;
-    
-    // file_name 복사본 생성
-    char file_name_copy[256];
-    strlcpy(file_name_copy, file_name, sizeof(file_name_copy));
-    
-    // 토큰화
-    for (token = strtok_r(file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
-        arg_list[idx] = token;
-        idx++;
-    }
+static bool
+load (const char *file_name, struct intr_frame *if_) {
+	struct thread *t = thread_current ();
+	struct ELF ehdr;
+	struct file *file = NULL;
+	off_t file_ofs;
+	bool success = false;
+	int i;
 
-    // 첫 번째 인자를 file_name에 복사
-    memcpy(file_name_copy, arg_list[0], strlen(arg_list[0]) + 1);
+	/* Allocate and activate page directory. */
+	t->pml4 = pml4_create ();
+	if (t->pml4 == NULL)
+		goto done;
+	process_activate (thread_current ());
 
-    struct thread *t = thread_current();
-    struct ELF ehdr;
-    struct file *file = NULL;
-    off_t file_ofs;
-    bool success = false;
-    int i;
+	char *token, *save_ptr;
+	char *argv[64];
+	uint64_t cnt = 0;
 
-    /* Allocate and activate page directory. */
-    t->pml4 = pml4_create();
-    if (t->pml4 == NULL)
-        goto done;
+	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+		argv[cnt++] = token;
+	}
 
+	/* Open executable file. */
+  	file = filesys_open (argv[0]);
+	if (file == NULL) {
+		printf ("load: %s: open failed\n", file_name);
+		goto done;
+	}
     process_activate(thread_current());
 
     /* Open executable file. */
@@ -502,21 +530,28 @@ load(const char *file_name, struct intr_frame *if_) { // file_name = 'args-singl
         }
     }
 
-    /* Set up stack. */
-    if (!setup_stack(if_))
-        goto done;
+	if (!setup_stack (if_))
+		goto done;
 
-    /* Start address. */
-    if_->rip = ehdr.e_entry;
+	/* Start address. */
+	if_->rip = ehdr.e_entry;
 
-    // argument_stack 호출 (esp 대신 if_->rsp)
-    argument_stack(arg_list, idx, (void **)&if_->rsp);
+	/* TODO: Your code goes here.
+	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+  
+	argument_stack(argv, cnt, &if_->rsp);
+	if_->R.rdi = cnt;
+	if_->R.rsi = if_->rsp + 8;
 
-    success = true;
+	success = true;
+
+ 	 // * 추가
+	t->running_file = file;
+	file_deny_write(file);
 
 done:
-    file_close(file);
-    return success;
+	/* We arrive here whether the load is successful or not. */
+	return success;
 }
 
 
