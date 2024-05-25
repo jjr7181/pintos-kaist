@@ -154,82 +154,12 @@ error:
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-int
-process_exec (void *f_name) {	// f_name = 'args-single onearg'
+int process_exec(void *f_name) {
 	char *file_name = f_name;
+	char *file_name_copy[48];
 	bool success;
 
-	struct intr_frame _if;
-	_if.ds = _if.es = _if.ss = SEL_UDSEG;
-	_if.cs = SEL_UCSEG;
-	_if.eflags = FLAG_IF | FLAG_MBS;
-
-	/* We first kill the current context */
-	process_cleanup ();
-
-	/* And then load the binary */
-	// file_name : 프로그램(실행파일) 이름
-	success = load (file_name, &_if);
-
-	/* If load failed, quit. */
-	palloc_free_page (file_name);
-	if (!success)	//메모리 적재 실패시 -1 반환
-		return -1;
-
-	hex_dump(_if.rsp,_if.rsp,USER_STACK-_if.rsp,true);
-	
-	/* Start switched process. */
-	// do interrupt return
-	do_iret (&_if);
-	NOT_REACHED ();
-}
-void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
-	int i,j;
-	int cnt=0;
-	int start_addr=if_->rsp;
-
-	for (int i=idx-1; i>-1; i--)
-	{
-		cnt+=strlen(arg_list[i])+1;
-		for (j=strlen(arg_list[i]); j>-1 ; j--)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, arg_list[i][j], sizeof(char));
-		
-		}
-	
-		if (i==0){
-	
-		/* word-align*/
-		int align = 8 - (cnt % 8);
-		for (int k=0; k < align ; k++)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, 0, sizeof(char));
-		}
-
-		for (i=idx; i>-1; i--)
-		{
-			if_->rsp = if_->rsp-8;
-
-			if (i==idx)
-				memset(if_->rsp, 0, sizeof(char *));
-			else {
-				start_addr=start_addr-strlen(arg_list[i])-1;
-				memcpy(if_->rsp, &start_addr, sizeof(start_addr));
-			}
-		}
-		if_->rsp = if_->rsp-8;
-		memset(if_->rsp, 0, sizeof(void *));
-		if_->R.rdi=idx;
-		if_->R.rsi=if_->rsp + 8; 
-		}
-	}
-}
-{
-	char *file_name = f_name;
-	bool success;
-
+	memcpy(file_name_copy, file_name, strlen(file_name) + 1);
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -239,38 +169,37 @@ void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
+	/* We first kill the current context */
 	process_cleanup();
 
-	char *argu[128];
-	char *token, *parsing;
-	int cnt = 0;
-	/* strtok_r 함수를 통해서 첫 번째로 얻은 값을 token에 저장, 나머지를 parsing에 저장 */
-	/* token이 NULL일때까지 반복 */
-	/* strtok_r 함수에 NULL값을 받아온다면 이전 호출 이후의 남은 문자열에서 토큰을 찾음, 따라서 token에는 다음 문자 저장*/
-	for(token=strtok_r(file_name," ",&parsing);token!=NULL; token=strtok_r(NULL," ",&parsing))
-	{
-		argu[cnt++]=token;
+	int token_count = 0;
+	char *token, *last;
+	char *arg_list[64];
+	char *tmp_save = token;
+
+	token = strtok_r(file_name_copy, " ", &last);
+	arg_list[token_count] = token;
+
+	while (token != NULL) {
+		token = strtok_r(NULL, " ", &last);
+		token_count++;
+		arg_list[token_count] = token;
 	}
- 
+
 	/* And then load the binary */
-	success = load (file_name, &_if);
- 
-	
-	argument_stack(argu,cnt,&_if.rsp);
-	/*if 구조체의 필드값 갱신*/
-	_if.R.rdi=cnt;
-	_if.R.rsi=(char*)_if.rsp+8;
-	/*_if.rsp를 시작 주소로하여 메모리 덤프를 생성. 메모리 덤프의 크기는 16진수로*/
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
- 
+	success = load(file_name, &_if);
+
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
+	palloc_free_page(file_name);
+	
 	if (!success)
 		return -1;
- 
+	
+	argument_stack(arg_list, token_count, &_if);
+	
 	/* Start switched process. */
-	do_iret (&_if);
-	NOT_REACHED ();
+	do_iret(&_if);
+	NOT_REACHED();
 }
 
 // Load user stack with arguments
