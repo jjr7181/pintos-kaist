@@ -204,7 +204,7 @@ void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받�
 
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
-{	char *file_name = f_name;
+	char *file_name = f_name;
 	bool success;
 
 	/* We cannot use the intr_frame in the thread structure.
