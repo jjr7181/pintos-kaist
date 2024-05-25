@@ -50,7 +50,7 @@ tid_t process_create_initd(const char *file_name)
 	if (fn_copy == NULL)
 		return TID_ERROR;
 	strlcpy(fn_copy, file_name, PGSIZE);
-	// fn_copy -> 첫번째 공백 전까지 parsing한 값으로 변경하기
+	// 이부분에서 포인터 잘못쓰면 나처럼 대박 난리남
 
 	/* Create a new thread to execute FILE_NAME. */
 	tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
@@ -167,7 +167,7 @@ error:
 /* Switch the current execution context to the f_name.
  * Returns -1 on fail. */
 int process_exec(void *f_name)
-{ // 인자: 실행하려는 이진 파일의 이름
+{ 
 	char *file_name = f_name;
 	bool success;
 
@@ -190,10 +190,7 @@ int process_exec(void *f_name)
 
 	/* And then load the binary */
 	success = load(file_name, &_if);
-	// 이진 파일을 디스크에서 메모리로 로드한다.
-	// 이진 파일에서 실행하려는 명령의 위치를 얻고 (if_.rip)
-	// user stack의 top 포인터를 얻는다. (if_.rsp)
-	// 위 과정을 성공하면 실행을 계속하고, 실패하면 스레드가 종료된다.
+	
 
 	/* If load failed, quit. */
 	if (!success)
@@ -202,11 +199,11 @@ int process_exec(void *f_name)
 		return -1;
 	}
 
-	argument_stack(parse, count, &_if.rsp); // 함수 내부에서 parse와 rsp의 값을 직접 변경하기 위해 주소 전달
+	argument_stack(parse, count, &_if.rsp); 
 	_if.R.rdi = count;
 	_if.R.rsi = parse[0];
 
-	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true); // user stack을 16진수로 프린트
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
 
 	palloc_free_page(file_name);
 
@@ -215,35 +212,30 @@ int process_exec(void *f_name)
 	NOT_REACHED();
 }
 
-void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받았으므로 이중 포인터 사용
+void argument_stack(char **parse, int count, void **rsp) // 주소에다가 다시 씌워야 원하는 거 얻음
 {
-	// 프로그램 이름, 인자 문자열 push
 	for (int i = count - 1; i > -1; i--)
 	{
 		for (int j = strlen(parse[i]); j > -1; j--)
 		{
-			(*rsp)--;					  // 스택 주소 감소
+			(*rsp)--;					 
 			**(char **)rsp = parse[i][j]; // 주소에 문자 저장
 		}
-		parse[i] = *(char **)rsp; // parse[i]에 현재 rsp의 값 저장해둠(지금 저장한 인자가 시작하는 주소값)
+		parse[i] = *(char **)rsp; 
 	}
-
-	// 정렬 패딩 push
 	int padding = (int)*rsp % 8;
 	for (int i = 0; i < padding; i++)
 	{
 		(*rsp)--;
-		**(uint8_t **)rsp = 0; // rsp 직전까지 값 채움
+		**(uint8_t **)rsp = 0; 
 	}
 
-	// 인자 문자열 종료를 나타내는 0 push
 	(*rsp) -= 8;
 	**(char ***)rsp = 0;
 
-	// 각 인자 문자열의 주소 push
 	for (int i = count - 1; i > -1; i--)
 	{
-		(*rsp) -= 8; // 다음 주소로 이동
+		(*rsp) -= 8; 
 		**(char ***)rsp = parse[i];
 	}
 
@@ -265,12 +257,9 @@ int process_wait(tid_t child_tid UNUSED)
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	for (int i = 0; i < 100000000; i++)
-	{
+	while(1){
+		
 	}
-	// while (1)
-	// {
-	// }
 	return -1;
 }
 
