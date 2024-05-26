@@ -20,11 +20,6 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
-/* [ sleep list에 있는 알람시간 중 가장 이른 알람시간 ]
-   가장 이른 알람시간 ≤ 현재 ticks 이면, 깨울 스레드가 없다는 의미이다. */
-int64_t MIN_alarm_time = INT64_MAX;
-#define F (1 << 14) /* fixed point 1 */
-
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -77,6 +72,7 @@ void timer_calibrate(void)
 }
 
 /* Returns the number of timer ticks since the OS booted. */
+// 운영 체제(OS)가 부팅된 이후부터 현재까지 경과한 시간을 타이머 틱(tick) 단위로 반환
 int64_t
 timer_ticks(void)
 {
@@ -89,22 +85,20 @@ timer_ticks(void)
 
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
+// 인자인 then 이후로 경과한 타이머 틱(tick) 수를 반환
 int64_t
 timer_elapsed(int64_t then)
 {
 	return timer_ticks() - then;
 }
 
-/* 알람시간 = 현재 흐른 ticks + 재울 ticks */
+/* Suspends execution for approximately TICKS timer ticks. */
+// 타이머 틱(tick) 동안 실행을 일시 중지
 void timer_sleep(int64_t ticks)
 {
-	thread_sleep(timer_ticks() + ticks);
-}
-
-/* 알람 시간이 다 되면 sleep -> ready로 상태를 바꿔준다. */
-void wakeup(struct thread *t)
-{
-	thread_unblock(t);
+	int64_t start = timer_ticks(); // 현재 시각
+	ASSERT(intr_get_level() == INTR_ON);
+	thread_sleep(start + ticks); // 깨어야 할 시각
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -131,32 +125,13 @@ void timer_print_stats(void)
 	printf("Timer: %" PRId64 " ticks\n", timer_ticks());
 }
 
-/* [ Timer interrupt handler ]
-   알람시간 ≤ 현재 시간 이면, 깨워야 한다. */
+/* Timer interrupt handler. */
 static void
 timer_interrupt(struct intr_frame *args UNUSED)
 {
 	ticks++;
 	thread_tick();
-	/* mlfqs 스케줄러일 경우
-	   timer_interrupt 가 발생할때 마다 recuent_cpu 1증가, 
-	   1초마다 load_avg, recent_cpu, priority 재계산,
-	   매 4tick마다 priority 재계산 */
-	if (thread_mlfqs) {
-        mlfqs_increment();
-        if (timer_ticks() % 4 == 0)
-            mlfqs_recalc_priority();
-
-        if (timer_ticks() % 100 == 0) {
-            mlfqs_load_avg();
-            mlfqs_recalc_recent_cpu();
-        }
-    }
-	
-	if (MIN_alarm_time <= ticks)
-	{
-		thread_awake(ticks);
-	}
+	thread_wakeup(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
