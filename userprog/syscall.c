@@ -10,6 +10,7 @@
 
 void syscall_entry(void);
 void syscall_handler(struct intr_frame *);
+void check_address(void *addr);
 
 /* System call.
  *
@@ -36,16 +37,26 @@ void syscall_init(void)
 	write_msr(MSR_SYSCALL_MASK,
 			  FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
-
+void halt(void)
+{
+	syscall0(SYS_HALT);
+	NOT_REACHED();
+}
 /* The main system call interface */
 void syscall_handler(struct intr_frame *f UNUSED)
 {
 	// TODO: Your implementation goes here.
-	int syscall_n = f->R.rax;
+	int syscall_n = f->R.rax; /* 시스템 콜 넘버 */
 	switch (syscall_n)
 	{
 	case SYS_HALT:
 		halt();
 		break;
 	}
+}
+
+void check_address(void *addr)
+{
+	if (!is_user_vaddr(addr) || addr == NULL) // 유저 영역이 아니거나 NULL이면 프로세스 종료
+		exit(-1);
 }

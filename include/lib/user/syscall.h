@@ -71,8 +71,8 @@ __attribute__((always_inline)) static __inline int64_t syscall(uint64_t num_, ui
 void halt(void)
 {
 	power_off();
-	// syscall0(SYS_HALT);
-	// NOT_REACHED();
+	 syscall0(SYS_HALT);
+	 NOT_REACHED();
 }
 
 void exit(int status)
