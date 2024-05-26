@@ -536,6 +536,7 @@ done:
     /* Free file_name_copy if it hasn't been freed yet. */
     if (file_name_copy != NULL) {
         free(file_name_copy);
+        file_name_copy = NULL;
     }
     /* We arrive here whether the load is successful or not. */
     return success;
