@@ -410,92 +410,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * Stores the executable's entry point into *RIP
  * and its initial stack pointer into *RSP.
  * Returns true if successful, false otherwise. */
-void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
-	int i,j;
-	int cnt=0;
-	int start_addr=if_->rsp;
-
-	for (int i=idx-1; i>-1; i--)
-	{
-		cnt+=strlen(arg_list[i])+1;
-		for (j=strlen(arg_list[i]); j>-1 ; j--)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, arg_list[i][j], sizeof(char));
-		
-		}
-	
-		if (i==0){
-	
-		/* word-align*/
-		int align = 8 - (cnt % 8);
-		for (int k=0; k < align ; k++)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, 0, sizeof(char));
-		}
-
-		for (i=idx; i>-1; i--)
-		{
-			if_->rsp = if_->rsp-8;
-
-			if (i==idx)
-				memset(if_->rsp, 0, sizeof(char *));
-			else {
-				start_addr=start_addr-strlen(arg_list[i])-1;
-				memcpy(if_->rsp, &start_addr, sizeof(start_addr));
-			}
-		}
-		if_->rsp = if_->rsp-8;
-		memset(if_->rsp, 0, sizeof(void *));
-		if_->R.rdi=idx;
-		if_->R.rsi=if_->rsp + 8; 
-		}
-	}
-}
-void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
-	int i,j;
-	int cnt=0;
-	int start_addr=if_->rsp;
-
-	for (int i=idx-1; i>-1; i--)
-	{
-		cnt+=strlen(arg_list[i])+1;
-		for (j=strlen(arg_list[i]); j>-1 ; j--)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, arg_list[i][j], sizeof(char));
-		
-		}
-	
-		if (i==0){
-	
-		/* word-align*/
-		int align = 8 - (cnt % 8);
-		for (int k=0; k < align ; k++)
-		{
-			if_->rsp=if_->rsp-1;
-			memset(if_->rsp, 0, sizeof(char));
-		}
-
-		for (i=idx; i>-1; i--)
-		{
-			if_->rsp = if_->rsp-8;
-
-			if (i==idx)
-				memset(if_->rsp, 0, sizeof(char *));
-			else {
-				start_addr=start_addr-strlen(arg_list[i])-1;
-				memcpy(if_->rsp, &start_addr, sizeof(start_addr));
-			}
-		}
-		if_->rsp = if_->rsp-8;
-		memset(if_->rsp, 0, sizeof(void *));
-		if_->R.rdi=idx;
-		if_->R.rsi=if_->rsp + 8; 
-		}
-	}
-}
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
 static bool
@@ -619,6 +533,49 @@ setup_stack (struct intr_frame *if_) {
 			palloc_free_page (kpage);
 	}
 	return success;
+}
+void argument_stack(char **arg_list,int idx,struct intr_frame *if_){
+	int i,j;
+	int cnt=0;
+	int start_addr=if_->rsp;
+
+	for (int i=idx-1; i>-1; i--)
+	{
+		cnt+=strlen(arg_list[i])+1;
+		for (j=strlen(arg_list[i]); j>-1 ; j--)
+		{
+			if_->rsp=if_->rsp-1;
+			memset(if_->rsp, arg_list[i][j], sizeof(char));
+		
+		}
+	
+		if (i==0){
+	
+		/* word-align*/
+		int align = 8 - (cnt % 8);
+		for (int k=0; k < align ; k++)
+		{
+			if_->rsp=if_->rsp-1;
+			memset(if_->rsp, 0, sizeof(char));
+		}
+
+		for (i=idx; i>-1; i--)
+		{
+			if_->rsp = if_->rsp-8;
+
+			if (i==idx)
+				memset(if_->rsp, 0, sizeof(char *));
+			else {
+				start_addr=start_addr-strlen(arg_list[i])-1;
+				memcpy(if_->rsp, &start_addr, sizeof(start_addr));
+			}
+		}
+		if_->rsp = if_->rsp-8;
+		memset(if_->rsp, 0, sizeof(void *));
+		if_->R.rdi=idx;
+		if_->R.rsi=if_->rsp + 8; 
+		}
+	}
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
