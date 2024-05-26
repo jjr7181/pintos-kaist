@@ -216,7 +216,7 @@ int process_exec(void *f_name)
 	NOT_REACHED();
 }
 
-void argument_stack(char **parse, int count, void **rsp) /\
+void argument_stack(char **parse, int count, void **rsp) 
 {
 	// 프로그램 이름, 인자 문자열 push
 	for (int i = count - 1; i > -1; i--)
@@ -266,7 +266,7 @@ int process_wait(tid_t child_tid UNUSED)
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	 while (1)
-	 {
+	{
 	}
 	return -1;
 }
