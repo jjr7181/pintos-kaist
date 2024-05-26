@@ -37,20 +37,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * thread id, or TID_ERROR if the thread cannot be created.
  * Notice that THIS SHOULD BE CALLED ONCE. */
 static bool
-load (const char *file_name, struct intr_frame *if_) { // file_name = 'args-single onearg'
-	/* parsing */
-	char *token, *save_ptr;
-    char *arg_list[100];
-    int idx=0;
-	for (token = strtok_r (file_name, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
-    {
-        arg_list[idx]=token;
-		idx++;
-    }
-
-	memcpy(file_name,arg_list[0],strlen(arg_list[0])+1);
-
-	struct thread *t = thread_current ();
+load(const char *file_name, struct intr_frame *if_)
+{
+	struct thread *t = thread_current();
 	struct ELF ehdr;
 	struct file *file = NULL;
 	off_t file_ofs;
@@ -58,99 +47,92 @@ load (const char *file_name, struct intr_frame *if_) { // file_name = 'args-sing
 	int i;
 
 	/* Allocate and activate page directory. */
-	/* 페이지 디렉토리 생성 */
-	t->pml4 = pml4_create ();
+	t->pml4 = pml4_create(); // 페이지 dir(페이지 테이블 포인터) 생성
 	if (t->pml4 == NULL)
 		goto done;
-	/* 페이지 테이블 활성화 */
-	process_activate (thread_current ());
+	process_activate(thread_current()); // 이 함수 안에서 페이지 테이블 활성화함
 
 	/* Open executable file. */
-	/* 프로그램파일 Open */
-	file = filesys_open (file_name);
-	if (file == NULL) {
-		printf ("load: %s: open failed\n", file_name);
+	file = filesys_open(file_name);
+	if (file == NULL)
+	{
+		printf("load: %s: open failed\n", file_name);
 		goto done;
 	}
 
 	/* Read and verify executable header. */
-	/* ELF파일의 헤더정보를 읽어와 저장*/
-	if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
-			|| memcmp (ehdr.e_ident, "\177ELF\2\1\1", 7)
-			|| ehdr.e_type != 2
-			|| ehdr.e_machine != 0x3E // amd64
-			|| ehdr.e_version != 1
-			|| ehdr.e_phentsize != sizeof (struct Phdr)
-			|| ehdr.e_phnum > 1024) {
-		printf ("load: %s: error loading executable\n", file_name);
+	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr || memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7) || ehdr.e_type != 2 || ehdr.e_machine != 0x3E // amd64
+		|| ehdr.e_version != 1 || ehdr.e_phentsize != sizeof(struct Phdr) || ehdr.e_phnum > 1024)
+	{
+		printf("load: %s: error loading executable\n", file_name);
 		goto done;
 	}
 
 	/* Read program headers. */
 	file_ofs = ehdr.e_phoff;
-	for (i = 0; i < ehdr.e_phnum; i++) {
-		/* 배치정보를 읽어와 저장. */
+	for (i = 0; i < ehdr.e_phnum; i++)
+	{
 		struct Phdr phdr;
 
-		if (file_ofs < 0 || file_ofs > file_length (file))
+		if (file_ofs < 0 || file_ofs > file_length(file))
 			goto done;
-		file_seek (file, file_ofs);
+		file_seek(file, file_ofs);
 
-		if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
 			goto done;
 		file_ofs += sizeof phdr;
-		switch (phdr.p_type) {
-			case PT_NULL:
-			case PT_NOTE:
-			case PT_PHDR:
-			case PT_STACK:
-			default:
-				/* Ignore this segment. */
-				break;
-			case PT_DYNAMIC:
-			case PT_INTERP:
-			case PT_SHLIB:
-				goto done;
-			case PT_LOAD:
-				if (validate_segment (&phdr, file)) {
-					bool writable = (phdr.p_flags & PF_W) != 0;
-					uint64_t file_page = phdr.p_offset & ~PGMASK;
-					uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
-					uint64_t page_offset = phdr.p_vaddr & PGMASK;
-					uint32_t read_bytes, zero_bytes;
-					if (phdr.p_filesz > 0) {
+		switch (phdr.p_type)
+		{
+		case PT_NULL:
+		case PT_NOTE:
+		case PT_PHDR:
+		case PT_STACK:
+		default:
+			/* Ignore this segment. */
+			break;
+		case PT_DYNAMIC:
+		case PT_INTERP:
+		case PT_SHLIB:
+			goto done;
+		case PT_LOAD:
+			if (validate_segment(&phdr, file))
+			{
+				bool writable = (phdr.p_flags & PF_W) != 0;
+				uint64_t file_page = phdr.p_offset & ~PGMASK;
+				uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
+				uint64_t page_offset = phdr.p_vaddr & PGMASK;
+				uint32_t read_bytes, zero_bytes;
+				if (phdr.p_filesz > 0)
+				{
 					/* Normal segment.
 					 * Read initial part from disk and zero the rest. */
 					read_bytes = page_offset + phdr.p_filesz;
-					zero_bytes = (ROUND_UP (page_offset + phdr.p_memsz, PGSIZE)
-								- read_bytes);
-					} else {
+					zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE) - read_bytes);
+				}
+				else
+				{
 					/* Entirely zero.
 					 * Don't read anything from disk. */
 					read_bytes = 0;
-					zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
-					}
-					/* 배치정보를통해 파일을 메모리에 적재. */
-					if (!load_segment (file, file_page, (void *) mem_page,
-								read_bytes, zero_bytes, writable))
-						goto done;
+					zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
 				}
-				else
+				if (!load_segment(file, file_page, (void *)mem_page,
+								  read_bytes, zero_bytes, writable))
 					goto done;
-				break;
+			}
+			else
+				goto done;
+			break;
 		}
 	}
 
 	/* Set up stack. */
-	// 스택 초기화
-	if (!setup_stack (if_))
+	if (!setup_stack(if_)) // user stack 초기화
 		goto done;
 
 	/* Start address. */
-	// text세그먼트 시작 주소
-	if_->rip = ehdr.e_entry;
-
-	argument_stack(arg_list,idx,if_);
+	if_->rip = ehdr.e_entry; // entry point 초기화
+	// rip: 프로그램 카운터(실행할 다음 인스트럭션의 메모리  주소)
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
@@ -159,7 +141,7 @@ load (const char *file_name, struct intr_frame *if_) { // file_name = 'args-sing
 
 done:
 	/* We arrive here whether the load is successful or not. */
-	file_close (file);
+	file_close(file);
 	return success;
 }
 tid_t process_create_initd(const char *file_name)
@@ -503,13 +485,14 @@ struct ELF64_PHDR {
 /* Checks whether PHDR describes a valid, loadable segment in
  * FILE and returns true if so, false otherwise. */
 static bool
-validate_segment (const struct Phdr *phdr, struct file *file) {
+validate_segment(const struct Phdr *phdr, struct file *file)
+{
 	/* p_offset and p_vaddr must have the same page offset. */
 	if ((phdr->p_offset & PGMASK) != (phdr->p_vaddr & PGMASK))
 		return false;
 
 	/* p_offset must point within FILE. */
-	if (phdr->p_offset > (uint64_t) file_length (file))
+	if (phdr->p_offset > (uint64_t)file_length(file))
 		return false;
 
 	/* p_memsz must be at least as big as p_filesz. */
@@ -522,9 +505,9 @@ validate_segment (const struct Phdr *phdr, struct file *file) {
 
 	/* The virtual memory region must both start and end within the
 	   user address space range. */
-	if (!is_user_vaddr ((void *) phdr->p_vaddr))
+	if (!is_user_vaddr((void *)phdr->p_vaddr))
 		return false;
-	if (!is_user_vaddr ((void *) (phdr->p_vaddr + phdr->p_memsz)))
+	if (!is_user_vaddr((void *)(phdr->p_vaddr + phdr->p_memsz)))
 		return false;
 
 	/* The region cannot "wrap around" across the kernel virtual
@@ -543,6 +526,7 @@ validate_segment (const struct Phdr *phdr, struct file *file) {
 	/* It's okay. */
 	return true;
 }
+
 
 #ifndef VM
 /* Codes of this block will be ONLY USED DURING project 2.
