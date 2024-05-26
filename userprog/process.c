@@ -293,9 +293,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	// busy waiting #ifdef DEBUG
-whie(1){
-
-};	
+while(1){}	
 	return -1;
 }
 
@@ -420,7 +418,8 @@ load (const char *file_name, struct intr_frame *if_) {
 	off_t file_ofs;
 	bool success = false;
 	int i;
-
+	char * file_name_copy;
+	
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -430,29 +429,118 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;
 	char *argv[64];
 	uint64_t cnt = 0;
-	/* file_name_copy에 메모리를 할당하고 file_name을 복사합니다. */
+	
+	/* Allocate memory for file_name_copy and copy file_name into it. */
 	file_name_copy = malloc(strlen(file_name) + 1);
 	if (file_name_copy == NULL) {
-    printf("메모리 할당 실패\n");
-    goto done;
+    	printf("Memory allocation failed\n");
+    	goto done;
 	}
-	strcpy(file_name_copy, file_name); // file_name을 file_name_copy에 복사합니다.
-	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
+	strcpy(file_name_copy, file_name);
+
+	for (token = strtok_r(file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
 		argv[cnt++] = token;
 	}
 
 	/* Open executable file. */
-  	file = filesys_open (argv[0]);
+	file = filesys_open(argv[0]);
 	if (file == NULL) {
-		printf ("load: %s: open failed\n", file_name);
+		printf ("load: %s: open failed\n", argv[0]);
 		goto done;
 	}
-    process_activate(thread_current());
-	file = filesys_open(file_name_copy);
-	if (file == NULL) {
-    printf("load: %s: open failed\n", file_name_copy);
-    goto done;
+	
+	/* Free file_name_copy after usage. */
+	free(file_name_copy);
+	file_name_copy = NULL;
+
+	/* Read and verify executable header. */
+	if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr
+		|| memcmp(ehdr.e_ident, "\177ELF\2\1\1", 7)
+		|| ehdr.e_type != 2
+		|| ehdr.e_machine != 0x3E // amd64
+		|| ehdr.e_version != 1
+		|| ehdr.e_phentsize != sizeof(struct Phdr)
+		|| ehdr.e_phnum > 1024) {
+		printf("load: %s: error loading executable\n", argv[0]);
+		goto done;
 	}
+
+	/* Read program headers. */
+	file_ofs = ehdr.e_phoff;
+	for (i = 0; i < ehdr.e_phnum; i++) {
+		struct Phdr phdr;
+
+		if (file_ofs < 0 || file_ofs > file_length(file))
+			goto done;
+		file_seek(file, file_ofs);
+
+		if (file_read(file, &phdr, sizeof phdr) != sizeof phdr)
+			goto done;
+		file_ofs += sizeof phdr;
+		switch (phdr.p_type) {
+			case PT_NULL:
+			case PT_NOTE:
+			case PT_PHDR:
+			case PT_STACK:
+			default:
+				/* Ignore this segment. */
+				break;
+			case PT_DYNAMIC:
+			case PT_INTERP:
+			case PT_SHLIB:
+				goto done;
+			case PT_LOAD:
+				if (validate_segment(&phdr, file)) {
+					bool writable = (phdr.p_flags & PF_W) != 0;
+					uint64_t file_page = phdr.p_offset & ~PGMASK;
+					uint64_t mem_page = phdr.p_vaddr & ~PGMASK;
+					uint64_t page_offset = phdr.p_vaddr & PGMASK;
+					uint32_t read_bytes, zero_bytes;
+					if (phdr.p_filesz > 0) {
+						/* Normal segment.
+						 * Read initial part from disk and zero the rest. */
+						read_bytes = page_offset + phdr.p_filesz;
+						zero_bytes = (ROUND_UP(page_offset + phdr.p_memsz, PGSIZE) - read_bytes);
+					} else {
+						/* Entirely zero.
+						 * Don't read anything from disk. */
+						read_bytes = 0;
+						zero_bytes = ROUND_UP(page_offset + phdr.p_memsz, PGSIZE);
+					}
+					if (!load_segment(file, file_page, (void *) mem_page, read_bytes, zero_bytes, writable))
+						goto done;
+				} else
+					goto done;
+				break;
+		}
+	}
+
+	if (!setup_stack (if_))
+		goto done;
+
+	/* Start address. */
+	if_->rip = ehdr.e_entry;
+
+	/* Implement argument passing. */
+	argument_stack(argv, cnt, &if_->rsp);
+	if_->R.rdi = cnt;
+	if_->R.rsi = if_->rsp + 8;
+
+	success = true;
+
+	/* Prevent writing to the executable while it's running. */
+	t->running_file = file;
+	file_deny_write(file);
+
+done:
+	/* Free file_name_copy if it hasn't been freed yet. */
+	if (file_name_copy != NULL) {
+		free(file_name_copy);
+	}
+	/* We arrive here whether the load is successful or not. */
+	return success;
+}
+
 
 /* file_name_copy에 할당된 메모리를 해제합니다. */
 free(file_name_copy);
