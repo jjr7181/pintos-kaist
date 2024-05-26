@@ -295,7 +295,7 @@ process_wait (tid_t child_tid UNUSED) {
 	// busy waiting #ifdef DEBUG
 whie(1){
 
-}	
+};	
 	return -1;
 }
 

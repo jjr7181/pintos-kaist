@@ -107,7 +107,7 @@ struct thread
 	int nice; /* for aging */
 	int recent_cpu;
 	struct list_elem allelem; /* 모든 thread의 recent_cpu와 priority값 재계산하기 위함 */
-
+	struct file *running_file;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */
