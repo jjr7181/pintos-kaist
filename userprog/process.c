@@ -27,7 +27,7 @@ static bool load (const char *file_name, struct intr_frame *if_);
 static void initd (void *f_name);
 static void __do_fork (void *);
 static bool setup_stack (struct intr_frame *if_);
-static bool validate_segment (const struct Phdr *phdr, struct file *file) ;
+static bool validate_segment(const struct Phdr *, struct file *);
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes, bool writable);
