@@ -413,7 +413,6 @@ static bool load_segment (struct file *file, off_t ofs, uint8_t *upage,
  * and its initial stack pointer into *RSP.
  * Returns true if successful, false otherwise. */
 static bool
-static bool
 load (const char *file_name, struct intr_frame *if_) {
 	struct thread *t = thread_current ();
 	struct ELF ehdr;
@@ -431,7 +430,13 @@ load (const char *file_name, struct intr_frame *if_) {
 	char *token, *save_ptr;
 	char *argv[64];
 	uint64_t cnt = 0;
-
+	/* file_name_copy에 메모리를 할당하고 file_name을 복사합니다. */
+	file_name_copy = malloc(strlen(file_name) + 1);
+	if (file_name_copy == NULL) {
+    printf("메모리 할당 실패\n");
+    goto done;
+	}
+	strcpy(file_name_copy, file_name); // file_name을 file_name_copy에 복사합니다.
 	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
 		argv[cnt++] = token;
 	}
@@ -443,13 +448,15 @@ load (const char *file_name, struct intr_frame *if_) {
 		goto done;
 	}
     process_activate(thread_current());
+	file = filesys_open(file_name_copy);
+	if (file == NULL) {
+    printf("load: %s: open failed\n", file_name_copy);
+    goto done;
+	}
 
-    /* Open executable file. */
-    file = filesys_open(file_name_copy);
-    if (file == NULL) {
-        printf("load: %s: open failed\n", file_name_copy);
-        goto done;
-    }
+/* file_name_copy에 할당된 메모리를 해제합니다. */
+free(file_name_copy);
+
 
     /* Read and verify executable header. */
     if (file_read(file, &ehdr, sizeof ehdr) != sizeof ehdr
