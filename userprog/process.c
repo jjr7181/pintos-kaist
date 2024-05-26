@@ -436,7 +436,7 @@ load (const char *file_name, struct intr_frame *if_) {
         printf("Memory allocation failed\n");
         goto done;
     }
-    strcpy(file_name_copy, file_name);
+    strlcpy(file_name_copy, file_name);
 
     for (token = strtok_r(file_name_copy, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr)) {
         argv[cnt++] = token;
