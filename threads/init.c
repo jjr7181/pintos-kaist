@@ -73,11 +73,9 @@ main (void) {
 	/* Clear BSS and get machine's RAM size. */
 	bss_init ();
 
-    /* Break command line into arguments and parse options. */
-    argv = read_command_line(); // command_line을 읽는다
-    argv = parse_options(argv); // 해당 line의 option 들을 parsing하여 argv에 담는다.
-
-
+	/* Break command line into arguments and parse options. */
+	argv = read_command_line ();
+	argv = parse_options (argv);
 
 	/* Initialize ourselves as a thread so we can use locks,
 	   then enable console locking. */
@@ -121,7 +119,7 @@ main (void) {
 	printf ("Boot complete.\n");
 
 	/* Run actions specified on kernel command line. */
-    run_actions(argv); 
+	run_actions (argv);
 
 	/* Finish up. */
 	if (power_off_when_done)
@@ -238,24 +236,20 @@ parse_options (char **argv) {
 
 /* Runs the task specified in ARGV[1]. */
 static void
-run_task(char **argv)
-{
-    const char *task = argv[1]; // argv[0]는 run이고 argv[1]부터 filename 시작되는 문자열
+run_task (char **argv) {
+	const char *task = argv[1];
 
-    printf("Executing '%s':\n", task);
+	printf ("Executing '%s':\n", task);
 #ifdef USERPROG
-    if (thread_tests)
-    {
-        run_test(task);
-    }
-    else
-    {
-        process_wait(process_create_initd(task));
-    }
+	if (thread_tests){
+		run_test (task);
+	} else {
+		process_wait (process_create_initd (task));
+	}
 #else
-    run_test(task);
+	run_test (task);
 #endif
-    printf("Execution of '%s' complete.\n", task);
+	printf ("Execution of '%s' complete.\n", task);
 }
 
 /* Executes all of the actions specified in ARGV[]

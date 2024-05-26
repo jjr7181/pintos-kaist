@@ -216,7 +216,7 @@ int process_exec(void *f_name)
 	NOT_REACHED();
 }
 
-void argument_stack(char **parse, int count, void **rsp) 
+void argument_stack(char **parse, int count, void **rsp) // 주소를 전달받았으므로 이중 포인터 사용
 {
 	// 프로그램 이름, 인자 문자열 push
 	for (int i = count - 1; i > -1; i--)
@@ -229,6 +229,7 @@ void argument_stack(char **parse, int count, void **rsp)
 		parse[i] = *(char **)rsp; // parse[i]에 현재 rsp의 값 저장해둠(지금 저장한 인자가 시작하는 주소값)
 	}
 
+	// 정렬 패딩 push
 	int padding = (int)*rsp % 8;
 	for (int i = 0; i < padding; i++)
 	{
@@ -265,9 +266,12 @@ int process_wait(tid_t child_tid UNUSED)
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	 while (1)
+	for (int i = 0; i < 100000000; i++)
 	{
 	}
+	// while (1)
+	// {
+	// }
 	return -1;
 }
 
