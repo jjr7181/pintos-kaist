@@ -140,6 +140,15 @@ page_fault (struct intr_frame *f) {
 	write = (f->error_code & PF_W) != 0;
 	user = (f->error_code & PF_U) != 0;
 
+	//페이지 폴트 발생 시 exit(-1) 호출
+	// kill 다음에 넣으면 이미 page fault가 발생한 상태여서 여기 넣어야댐
+	if (user) {
+		// 사용자의 잘못된 포인터 사용시에만 종료
+		if(!is_user_vaddr(fault_addr) || fault_addr == NULL){
+			exit(-1);
+		}
+	}
+
 #ifdef VM
 	/* For project 3 and later. */
 	if (vm_try_handle_fault (f, fault_addr, user, write, not_present))

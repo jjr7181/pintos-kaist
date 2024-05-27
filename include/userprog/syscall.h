@@ -15,5 +15,7 @@ int open (const char *file_name);
 int filesize (int fd);
 int write (int fd, const void *buffer, unsigned size);
 void check_address (void *addr);
-
+void seek (int fd, unsigned position);
+unsigned tell(int fd);
+void close (int fd);
 #endif /* userprog/syscall.h */

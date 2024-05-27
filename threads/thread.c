@@ -212,7 +212,12 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
-	// t->max_fd = 2;
+	t->max_fd = 2;
+
+	for (int i = 0; i < 130; ++i) 
+	{
+		t->fdt[i] = NULL;
+  }
 
 	/* Add to run queue. */
 	thread_unblock (t);

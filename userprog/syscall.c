@@ -9,6 +9,10 @@
 #include "intrinsic.h"
 #include "userprog/process.h" //exec system call에서 process_exec 사용하기 위해 include
 
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "devices/input.h"
+
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
@@ -103,6 +107,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = open(file_name);
 		break;
 	}
+
 	case SYS_FILESIZE:
 	{
 		int fd = f->R.rdi;
@@ -110,7 +115,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		f->R.rax = filesize(fd);
 		break;
 	}
-	// case SYS_READ:
+
+	case SYS_READ:
+	{
+		f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+		break;
+	}
+
 	case SYS_WRITE:
 	{
 		int fd = f->R.rdi;
@@ -118,12 +129,26 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		unsigned size = f->R.rdx;
 
 		f->R.rax = write(fd, buffer, size);
-		
+		break;
 	}
 
-	// case SYS_SEEK:
-	// case SYS_TELL:
+	case SYS_SEEK:
+	{
+		seek(f->R.rdi, f->R.rsi);
+		break;
+	}
+
+	case SYS_TELL:
+	{
+		f->R.rax = tell(f->R.rdi);
+		break;
+	}
+
 	case SYS_CLOSE:
+	{
+		close(f->R.rdi);
+		break;
+	}
 
 	default:
 		// thread_exit ();
@@ -141,13 +166,14 @@ halt (void) {
 void 
 exit (int status) {
 	struct thread *cur = thread_current();
-	// printf("%s: exit(%d)\n", cur->name, status);
+	printf("%s: exit(%d)\n", cur->name, status);
 	thread_exit();
 }
 
 // cmd_line으로 주어지는 프로세스를 실행시킨다
 int 
 exec (const char *cmd_line){
+	check_address(cmd_line);
 	int result = process_exec(cmd_line);
 
 	return result;
@@ -155,14 +181,17 @@ exec (const char *cmd_line){
 
 bool 
 create(const char *file, unsigned initial_size){
-	bool result = filesys_create(file, initial_size);
+	check_address(file);
 
-	return result;
+	//성공하면 true, 실패하면 false return
+	return filesys_create(file, initial_size);
 }
 
 //file is removed regardless of whether it is open or closed
 bool
 remove(const char *file_name) {
+	check_address(file_name);
+
 	bool result = filesys_remove(file_name);
 
 	return result;
@@ -170,12 +199,14 @@ remove(const char *file_name) {
 
 int
 open (const char *file_name){
+	check_address(file_name);
 	struct file *open_file = filesys_open(file_name);
-	check_address(open_file);
-	
-	int fd = process_add_file(open_file);
-	
-	return fd;
+
+	if (open_file == NULL)
+		return -1;
+
+	//fd를 리턴
+	return process_add_file(open_file);
 }
 
 int
@@ -188,7 +219,38 @@ filesize (int fd) {
 }
 
 int
+read (int fd, void *buffer, unsigned size)
+{
+	if (130 < fd || fd < 0 || fd == NULL)
+		exit(-1);
+	check_address(buffer);
+
+	if (fd == 0)
+	{
+		return input_getc();
+	}
+	else if (fd == 1)
+	{
+		return;
+	}
+	else
+	{
+		struct thread *curr = thread_current();
+		struct file *open_file = curr->fdt[fd];
+		// check_address(open_file);
+		
+		return file_read(open_file, buffer, size);
+	}
+}
+
+
+int
 write (int fd, const void *buffer, unsigned size){
+	
+	// fd == 0 일때(stdin) 처리 필요할지도?..
+	if (130 < fd || fd < 0 || fd == NULL)
+		exit(-1);
+	check_address(buffer);
 
 	if (fd == 1)
 		{
@@ -196,19 +258,58 @@ write (int fd, const void *buffer, unsigned size){
 
 			return size; // buffer의 size return 이게 아닐지도?...
 		}
-		else if (fd != 1)
+	else
 		{
 			struct thread *curr = thread_current();
 			struct file *open_file = curr->fdt[fd];
-			int bytes_written =	file_write(open_file, buffer, size);
-
-			return bytes_written;
+		
+			//returns number of bytes actually written
+			return file_write(open_file, buffer, size);
 		}
 }
 
 void
 check_address (void *addr)
-{
+{	
+	if (addr == NULL)
+		exit(-1);	
+
 	if (is_kernel_vaddr(addr))
 		exit(-1);
+
+	// 유저 가상주소에 대응되는 물리주소에 매핑되어있지 않다면 exit(-1)
+	struct thread *curr =thread_current();
+	if (pml4_get_page(curr->pml4, addr) == NULL)
+		exit(-1);
+}
+
+void
+seek (int fd, unsigned position)
+{
+	struct thread *curr = thread_current();
+	struct file *open_file = curr->fdt[fd];
+
+	file_seek(open_file, position);
+}
+
+unsigned
+tell(int fd)
+{
+	struct thread *curr = thread_current();
+	struct file *open_file = curr->fdt[fd];
+	
+	return file_tell(open_file);
+}
+
+void
+close (int fd)
+{
+	if (130 < fd || fd < 2 || fd == NULL)
+		exit(-1);
+
+	struct thread *curr = thread_current();
+	struct file *open_file = curr->fdt[fd];
+
+	curr->fdt[fd] = NULL;
+	file_close(open_file);
 }
