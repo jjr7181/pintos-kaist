@@ -4,7 +4,7 @@ Kernel command line: -q -f put sm-full run sm-full
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  130,867,200 loops/s.
+Calibrating timer...  157,081,600 loops/s.
 hd0:0: detected 313 sector (156 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 107 sector (53 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -18,27 +18,17 @@ Executing 'sm-full':
 (sm-full) writing "quux"
 (sm-full) close "quux"
 (sm-full) open "quux" for verification
-(sm-full) 78 bytes read starting at offset 0 in "quux" differ from expected.
-(sm-full) Showing first differing 64 bytes.
-(sm-full) Data actually read:
-0000000000000000  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000010  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000020  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000030  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-(sm-full) Expected data:
-0000000000000000  de 18 89 41 a3 37 5d 3a-8a 06 1e 67 57 6e 92 6d |...A.7]:...gWn.m|
-0000000000000010  c7 1a 7f a3 f0 cc eb 97-45 2b 4d 32 27 96 5f 9e |........E+M2'._.|
-0000000000000020  a8 cc 75 07 6d 9f b9 c5-41 7a a5 cb 30 fc 22 19 |..u.m...Az..0.".|
-0000000000000030  8b 34 98 2d bb 62 9e c0-4b 4f 8b 05 a0 71 08 50 |.4.-.b..KO...q.P|
-(sm-full) 78 bytes read starting at offset 0 in "quux" differ from expected: FAILED
-sm-full: exit(1)
+(sm-full) verified contents of "quux"
+(sm-full) close "quux"
+(sm-full) end
+sm-full: exit(0)
 Execution of 'sm-full' complete.
-Timer: 128 ticks
-Thread: 30 idle ticks, 84 kernel ticks, 14 user ticks
+Timer: 121 ticks
+Thread: 30 idle ticks, 85 kernel ticks, 6 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 112 reads, 266 writes
+hd0:1: 124 reads, 278 writes
 hd1:0: 107 reads, 0 writes
-Console: 1886 characters output
+Console: 1020 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

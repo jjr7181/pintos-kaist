@@ -19,8 +19,8 @@ Executing 'fork-close':
 (fork-close) end
 fork-close: exit(0)
 Execution of 'fork-close' complete.
-Timer: 126 ticks
-Thread: 30 idle ticks, 93 kernel ticks, 3 user ticks
+Timer: 119 ticks
+Thread: 30 idle ticks, 86 kernel ticks, 4 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 122 reads, 258 writes
 hd1:0: 110 reads, 0 writes

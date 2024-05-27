@@ -19,10 +19,10 @@ Executing 'rox-simple':
 (rox-simple) try to write "rox-simple": FAILED
 rox-simple: exit(1)
 Execution of 'rox-simple' complete.
-Timer: 117 ticks
-Thread: 30 idle ticks, 84 kernel ticks, 3 user ticks
+Timer: 113 ticks
+Thread: 30 idle ticks, 80 kernel ticks, 3 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 84 reads, 234 writes
+hd0:1: 85 reads, 235 writes
 hd1:0: 103 reads, 0 writes
 Console: 980 characters output
 Keyboard: 0 keys pressed

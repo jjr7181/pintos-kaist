@@ -18,27 +18,17 @@ Executing 'lg-seq-random':
 (lg-seq-random) writing "nibble"
 (lg-seq-random) close "nibble"
 (lg-seq-random) open "nibble" for verification
-(lg-seq-random) 218 bytes read starting at offset 0 in "nibble" differ from expected.
-(lg-seq-random) Showing first differing 64 bytes.
-(lg-seq-random) Data actually read:
-0000000000000000  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000010  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000020  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-0000000000000030  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
-(lg-seq-random) Expected data:
-0000000000000000  6d 25 2f 24 70 53 1b b0-39 4b 93 b4 c4 6f dd 9c |m%/$pS..9K...o..|
-0000000000000010  e8 bc f0 f1 6e db bb d3-ed 45 73 ec 51 98 b8 e6 |....n....Es.Q...|
-0000000000000020  a2 a4 44 ff 5a 9d de bc-bb ae 24 2e 7a 10 63 a5 |..D.Z.....$.z.c.|
-0000000000000030  7e d2 78 85 45 47 95 6c-66 1f 0e d8 39 44 65 6b |~.x.EG.lf...9Dek|
-(lg-seq-random) 218 bytes read starting at offset 0 in "nibble" differ from expected: FAILED
-lg-seq-random: exit(1)
+(lg-seq-random) verified contents of "nibble"
+(lg-seq-random) close "nibble"
+(lg-seq-random) end
+lg-seq-random: exit(0)
 Execution of 'lg-seq-random' complete.
-Timer: 128 ticks
-Thread: 30 idle ticks, 82 kernel ticks, 16 user ticks
+Timer: 123 ticks
+Thread: 30 idle ticks, 79 kernel ticks, 14 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 112 reads, 402 writes
+hd0:1: 506 reads, 686 writes
 hd1:0: 107 reads, 0 writes
-Console: 2004 characters output
+Console: 1125 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

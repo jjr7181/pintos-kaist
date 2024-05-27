@@ -1,2 +1,1 @@
-FAIL
-run: 218 bytes read starting at offset 0 in "nibble" differ from expected: FAILED
+PASS

@@ -122,10 +122,16 @@ int
 write(int fd, const void *buffer, unsigned size) {
 	check_addr_val(buffer);
 
-	if (fd == 1) {
+	struct thread *t = thread_current();
+
+	if(0 > fd ||  fd >= t->next_fd) return;
+
+	if (fd == 0) {
+		return;
+	} else if(fd == 1) {
 		putbuf(buffer, size);
 	} else {
-
+		return file_write(t->fdt[fd], buffer, size);
 	}
 
 	return size;
@@ -155,7 +161,7 @@ open (const char *file_name) { //(char *) 0x20101234 , sample.txt
 	
 	struct thread *t = thread_current();
 	int curr_fd = t->next_fd; 
-
+	
 	t->fdt[t->next_fd] = f;
 	t->next_fd += 1;
 
@@ -163,19 +169,22 @@ open (const char *file_name) { //(char *) 0x20101234 , sample.txt
 }
 
 int read (int fd, void *buffer, unsigned length) {
-	if(0 > fd ||  fd >= 64) return;
+	check_addr_val(buffer);
 
 	// 파일 끝에서 시도하면 return 0 하기
 
 	struct thread *t = thread_current();
-	
+
+	if(0 > fd ||  fd >= t->next_fd) return;
+
 	struct file *file = t->fdt[fd];
 
 	// if(!is_user_vaddr(buffer)) return -1;
-	check_addr_val(buffer);
 	
 	if(fd == 0){
 		return input_getc(); 
+	} else if(fd == 1) {
+		return;
 	} else {
 		return file_read(file, buffer, length);
 	}
