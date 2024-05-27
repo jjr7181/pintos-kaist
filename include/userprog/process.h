@@ -14,3 +14,4 @@ int process_add_file(struct file *f);
 struct file *process_get_file(int fd);
 void process_close_file(int fd);
 struct thread *get_child_process(int pid);
+#endif /* USERPROG_PROCESS_H */
