@@ -1,2 +1,2 @@
 FAIL
-run: read of 512 bytes at offset 0 in "quux" returned 9: FAILED
+run: 78 bytes read starting at offset 0 in "quux" differ from expected: FAILED

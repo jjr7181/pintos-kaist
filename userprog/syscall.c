@@ -8,15 +8,12 @@
 #include "threads/flags.h"
 #include "intrinsic.h"
 
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "devices/input.h"
+
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-void halt(void);
-void exit (int status);
-int write(int fd, const void *buffer, unsigned size);
-bool create (const char *file, unsigned initial_size);
-void check_addr_val(const void *addr);
-bool remove(const char *file_name);
-int open (const char *file);
 
 /* System call.
  *
@@ -74,22 +71,28 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			remove(f->R.rdi);
 			break;
 		case SYS_OPEN:
-			open(f->R.rdi);
+			f->R.rax = open(f->R.rdi);
 			break;
 		case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
 			break;
 		case SYS_READ:
+			f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_WRITE:
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 			break;
 		case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
 			break;
 		case SYS_TELL:
+			f->R.rax = tell(f->R.rdi);
 			break;
 		case SYS_CLOSE:
+			close(f->R.rdi);
 			break;
 		default:
+			thread_exit();
 			break;
 	}
 	// thread_exit ();
@@ -141,6 +144,78 @@ remove(const char *file_name) {
 }
 
 int 
-open (const char *file) {
+open (const char *file_name) { //(char *) 0x20101234 , sample.txt
+	check_addr_val(file_name);
 
+	struct file *f = filesys_open(file_name);
+	
+	if(f == NULL) {
+		return -1; 
+	}
+	
+	struct thread *t = thread_current();
+	int curr_fd = t->next_fd; 
+
+	t->fdt[t->next_fd] = f;
+	t->next_fd += 1;
+
+	return curr_fd;
+}
+
+int read (int fd, void *buffer, unsigned length) {
+	if(0 > fd ||  fd >= 64) return;
+
+	// 파일 끝에서 시도하면 return 0 하기
+
+	struct thread *t = thread_current();
+	
+	struct file *file = t->fdt[fd];
+
+	// if(!is_user_vaddr(buffer)) return -1;
+	check_addr_val(buffer);
+	
+	if(fd == 0){
+		return input_getc(); 
+	} else {
+		return file_read(file, buffer, length);
+	}
+}
+
+void seek (int fd, unsigned position) {
+	struct thread *t = thread_current();
+	
+	struct file *file = t->fdt[fd];
+
+	file_seek(file, position);
+}
+
+void close (int fd) {
+
+
+	if(0 > fd ||  fd >= 64) return;
+	
+	struct thread *t = thread_current();
+	struct file *file = t->fdt[fd];
+
+	if(file == NULL) return;
+
+	file_close(file);
+
+	t->fdt[fd] = NULL;
+}
+
+unsigned tell (int fd) {
+	struct thread *t = thread_current();
+	
+	struct file *file = t->fdt[fd];
+
+	return file_tell(file);
+}
+
+int filesize (int fd) {
+	struct thread *t = thread_current();
+	
+	struct file *file = t->fdt[fd];
+
+	return file_length(file);
 }

@@ -15,15 +15,16 @@ Putting 'sample.txt' into the file system...
 Executing 'fork-close':
 (fork-close) begin
 (fork-close) open "sample.txt"
-(fork-close) read() returned 9 instead of 373: FAILED
-fork-close: exit(1)
+(fork-close) Parent success
+(fork-close) end
+fork-close: exit(0)
 Execution of 'fork-close' complete.
-Timer: 120 ticks
-Thread: 30 idle ticks, 88 kernel ticks, 3 user ticks
+Timer: 126 ticks
+Thread: 30 idle ticks, 93 kernel ticks, 3 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 117 reads, 258 writes
+hd0:1: 122 reads, 258 writes
 hd1:0: 110 reads, 0 writes
-Console: 978 characters output
+Console: 969 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

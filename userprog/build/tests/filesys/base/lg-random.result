@@ -1,2 +1,2 @@
 FAIL
-run: read 512 bytes at offset 19968 failed: FAILED
+run: 93 bytes read starting at offset 19968 in "bazzle" differ from expected: FAILED

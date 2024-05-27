@@ -4,7 +4,7 @@ Kernel command line: -q -f put lg-full run lg-full
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  125,132,800 loops/s.
+Calibrating timer...  157,081,600 loops/s.
 hd0:0: detected 313 sector (156 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 107 sector (53 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -18,16 +18,27 @@ Executing 'lg-full':
 (lg-full) writing "quux"
 (lg-full) close "quux"
 (lg-full) open "quux" for verification
-(lg-full) size of quux (8) differs from expected (75678)
-(lg-full) read of 512 bytes at offset 0 in "quux" returned 9: FAILED
+(lg-full) 78 bytes read starting at offset 0 in "quux" differ from expected.
+(lg-full) Showing first differing 64 bytes.
+(lg-full) Data actually read:
+0000000000000000  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000010  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000020  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+0000000000000030  00 00 00 00 00 00 00 00-00 00 00 00 00 00 00 00 |................|
+(lg-full) Expected data:
+0000000000000000  de 18 89 41 a3 37 5d 3a-8a 06 1e 67 57 6e 92 6d |...A.7]:...gWn.m|
+0000000000000010  c7 1a 7f a3 f0 cc eb 97-45 2b 4d 32 27 96 5f 9e |........E+M2'._.|
+0000000000000020  a8 cc 75 07 6d 9f b9 c5-41 7a a5 cb 30 fc 22 19 |..u.m...Az..0.".|
+0000000000000030  8b 34 98 2d bb 62 9e c0-4b 4f 8b 05 a0 71 08 50 |.4.-.b..KO...q.P|
+(lg-full) 78 bytes read starting at offset 0 in "quux" differ from expected: FAILED
 lg-full: exit(1)
 Execution of 'lg-full' complete.
-Timer: 133 ticks
-Thread: 30 idle ticks, 94 kernel ticks, 9 user ticks
+Timer: 126 ticks
+Thread: 30 idle ticks, 82 kernel ticks, 14 user ticks
 hd0:0: 0 reads, 0 writes
-hd0:1: 103 reads, 402 writes
+hd0:1: 112 reads, 402 writes
 hd1:0: 107 reads, 0 writes
-Console: 1071 characters output
+Console: 1886 characters output
 Keyboard: 0 keys pressed
 Exception: 0 page faults
 Powering off...

@@ -4,7 +4,7 @@ Kernel command line: -q -f put read-stdout run read-stdout
 Pintos booting with: 
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
-Calibrating timer...  130,867,200 loops/s.
+Calibrating timer...  143,974,400 loops/s.
 hd0:0: detected 313 sector (156 kB) disk, model "QEMU HARDDISK", serial "QM00001"
 hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
 hd1:0: detected 102 sector (51 kB) disk, model "QEMU HARDDISK", serial "QM00003"
@@ -13,15 +13,24 @@ Boot complete.
 Putting 'read-stdout' into the file system...
 Executing 'read-stdout':
 (read-stdout) begin
-(read-stdout) end
-read-stdout: exit(0)
-Execution of 'read-stdout' complete.
-Timer: 122 ticks
-Thread: 30 idle ticks, 90 kernel ticks, 2 user ticks
+Page fault at 0x8: not present error reading page in kernel context.
+Interrupt 0x0e (#PF Page-Fault Exception) at rip=800421e661
+ cr2=0000000000000008 error=               0
+rax 0000000000000000 rbx 0000000000000000 rcx 000000004747ff8f rdx 0000000000000001
+rsp 0000008004241ea0 rbp 0000008004241ed0 rsi 000000004747ff8f rdi 0000000000000000
+rip 000000800421e661 r8 0000000000000000  r9 0000000000000000 r10 0000000000000000
+r11 0000000000000202 r12 000000800421cc17 r13 0000000000000000 r14 0000000000000000
+r15 0000000000000000 rflags 00000206
+es: 001b ds: 001b cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:97 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x8004217fc7 0x800421c962 0x800421cae1 0x8004208df3 0x8004209211 0x800421d0d0 0x800421cd59 0x800421cb56 0x40010d 0x40016b 0x400c0c.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 71 ticks
+Thread: 30 idle ticks, 36 kernel ticks, 5 user ticks
 hd0:0: 0 reads, 0 writes
 hd0:1: 80 reads, 232 writes
 hd1:0: 102 reads, 0 writes
-Console: 857 characters output
-Keyboard: 0 keys pressed
-Exception: 0 page faults
-Powering off...
+Console: 1761 characters output
+Key

@@ -1,2 +1,2 @@
 FAIL
-run: read of 512 bytes at offset 0 in "nibble" returned 9: FAILED
+run: 218 bytes read starting at offset 0 in "nibble" differ from expected: FAILED
