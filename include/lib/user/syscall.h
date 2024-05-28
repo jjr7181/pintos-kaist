@@ -71,129 +71,84 @@ __attribute__((always_inline)) static __inline int64_t syscall(uint64_t num_, ui
 void halt(void)
 {
 	power_off();
-	 syscall0(SYS_HALT);
-	 NOT_REACHED();
 }
 
 void exit(int status)
 {
-	syscall1(SYS_EXIT, status);
-	NOT_REACHED();
+struct thread *cur = thread_current();
+    cur->exit_status = status;		// 프로그램이 정상적으로 종료되었는지 확인(정상적 종료 시 0)
+
+	printf("%s: exit(%d)\n", thread_name(), status); 	// 종료 시 Process Termination Message 출력
+	thread_exit();		// 스레드 종료
+}
+int add_file_to_fdt(struct file *file) {
+	struct thread *cur = thread_current();
+	struct file **fdt = cur->fd_table;
+
+	// fd의 위치가 제한 범위를 넘지 않고, fdtable의 인덱스 위치와 일치한다면
+	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
+		cur->fd_idx++;
+	}
+
+	// fdt이 가득 찼다면
+	if (cur->fd_idx >= FDCOUNT_LIMIT)
+		return -1;
+
+	fdt[cur->fd_idx] = file;
+	return cur->fd_idx;
+}
+int filesize(int fd) {
+	struct file *open_file = find_file_by_fd(fd);
+	if (open_file == NULL) {
+		return -1;
+	}
+	return file_length(open_file);
 }
 
-pid_t fork(const char *thread_name)
-{
-	return (pid_t)syscall1(SYS_FORK, thread_name);
-}
+int read(int fd, void *buffer, unsigned size) {
+	check_address(buffer);
 
-int exec(const char *file)
-{
-	return (pid_t)syscall1(SYS_EXEC, file);
-}
+	int read_result;
+	struct thread *cur = thread_current();
+	struct file *file_fd = find_file_by_fd(fd);
 
-int wait(pid_t pid)
-{
-	return syscall1(SYS_WAIT, pid);
+	if (fd == 0) {
+		// read_result = i;
+		*(char *)buffer = input_getc();		
+		read_result = size;
+	}
+	else {
+		if (find_file_by_fd(fd) == NULL) {
+			return -1;
+		}
+		else {
+			lock_acquire(&filesys_lock);//위치 유의
+			read_result = file_read(find_file_by_fd(fd), buffer, size);
+			lock_release(&filesys_lock);
+		}
+	}
+	return read_result;
 }
+int open(const char *file) {
+	check_address(file);
+	struct file *open_file = filesys_open(file);
 
-bool create(const char *file, unsigned initial_size)
-{
-	return syscall2(SYS_CREATE, file, initial_size);
+	if (open_file == NULL) {
+		return -1;
+	}
+
+	int fd = add_file_to_fdt(open_file);
+
+	if (fd == -1) {
+		file_close(open_file);
+	}
+	return fd;
 }
+static struct file *find_file_by_fd(int fd) {
+	struct thread *cur = thread_current();
 
-bool remove(const char *file)
-{
-	return syscall1(SYS_REMOVE, file);
-}
-
-int open(const char *file)
-{
-	return syscall1(SYS_OPEN, file);
-}
-
-int filesize(int fd)
-{
-	return syscall1(SYS_FILESIZE, fd);
-}
-
-int read(int fd, void *buffer, unsigned size)
-{
-	return syscall3(SYS_READ, fd, buffer, size);
-}
-
-int write(int fd, const void *buffer, unsigned size)
-{
-	return syscall3(SYS_WRITE, fd, buffer, size);
-}
-
-void seek(int fd, unsigned position)
-{
-	syscall2(SYS_SEEK, fd, position);
-}
-
-unsigned
-tell(int fd)
-{
-	return syscall1(SYS_TELL, fd);
-}
-
-void close(int fd)
-{
-	syscall1(SYS_CLOSE, fd);
-}
-
-int dup2(int oldfd, int newfd)
-{
-	return syscall2(SYS_DUP2, oldfd, newfd);
-}
-
-void *
-mmap(void *addr, size_t length, int writable, int fd, off_t offset)
-{
-	return (void *)syscall5(SYS_MMAP, addr, length, writable, fd, offset);
-}
-
-void munmap(void *addr)
-{
-	syscall1(SYS_MUNMAP, addr);
-}
-
-bool chdir(const char *dir)
-{
-	return syscall1(SYS_CHDIR, dir);
-}
-
-bool mkdir(const char *dir)
-{
-	return syscall1(SYS_MKDIR, dir);
-}
-
-bool readdir(int fd, char name[READDIR_MAX_LEN + 1])
-{
-	return syscall2(SYS_READDIR, fd, name);
-}
-
-bool isdir(int fd)
-{
-	return syscall1(SYS_ISDIR, fd);
-}
-
-int inumber(int fd)
-{
-	return syscall1(SYS_INUMBER, fd);
-}
-
-int symlink(const char *target, const char *linkpath)
-{
-	return syscall2(SYS_SYMLINK, target, linkpath);
-}
-
-int mount(const char *path, int chan_no, int dev_no)
-{
-	return syscall3(SYS_MOUNT, path, chan_no, dev_no);
-}
-
-int umount(const char *path)
-{
-	return syscall1(SYS_UMOUNT, path);
+	if (fd < 0 || fd >= FDCOUNT_LIMIT) {
+		return NULL;
+	}
+	return cur->fd_table[fd];
 }

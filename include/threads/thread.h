@@ -23,7 +23,9 @@ enum thread_status
    You can redefine this to whatever type you like. */
 typedef int tid_t;
 #define TID_ERROR ((tid_t)-1) /* Error value for tid_t. */
+#define FDT_PAGES 3                       // pages to allocate for file descriptor tables (thread_create, process_exit)
 
+#define FDCOUNT_LIMIT FDT_PAGES *(1 << 9) // Limit fdIdx
 /* Thread priorities. */
 #define PRI_MIN 0	   /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
@@ -118,6 +120,9 @@ struct thread
 	struct semaphore wait_sema;
 
 	struct file *running; // 현재 실행중인 파일
+	struct file **fd_table;         // thread_create에서 할당
+
+    int fd_idx;                     // fd테이블에 open spot의 인덱스
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
