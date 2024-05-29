@@ -15,6 +15,7 @@
 #include "lib/kernel/stdio.h"
 #include "threads/palloc.h"
 static struct file *find_file_by_fd(int fd);
+void syscall_entry(void);
 
 void halt(void)
 {
