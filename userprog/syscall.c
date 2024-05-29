@@ -101,6 +101,10 @@ int open(const char *file) {
 	}
 	return fd;
 }
+bool create(const char *file, unsigned initial_size) {		// file: 생성할 파일의 이름 및 경로 정보, initial_size: 생성할 파일의 크기
+	check_address(file);
+	return filesys_create(file, initial_size);
+}
 static struct file *find_file_by_fd(int fd) {
 	struct thread *cur = thread_current();
 
@@ -108,6 +112,10 @@ static struct file *find_file_by_fd(int fd) {
 		return NULL;
 	}
 	return cur->fd_table[fd];
+}
+bool remove(const char *file) {			// file: 제거할 파일의 이름 및 경로 정보
+	check_address(file);
+	return filesys_remove(file);
 }
 int write(int fd, const void *buffer, unsigned size) {
 	check_address(buffer);
@@ -129,8 +137,27 @@ int write(int fd, const void *buffer, unsigned size) {
 	lock_release(&filesys_lock);
 	return write_result;
 }
+void seek(int fd, unsigned pos){
+	struct file *seek_file=find_file_by_fd(fd);
+	if(seek_file<=2)return;
+	seek_file->pos=pos;
+	
+}
+unsigned tell(int fd) {
+	struct file *tell_file = find_file_by_fd(fd);
+	if (tell_file <= 2) {
+		return;
+	}
+	return file_tell(tell_file);
+}
+void close(int fd) {
+	struct file *fileobj = find_file_by_fd(fd);
+	if (fileobj == NULL) {
+		return;
+	}
+	remove_file_from_fdt(fd);
+}
  
-
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -179,9 +206,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = process_wait(f->R.rdi);
 		break;
 	case SYS_CREATE:
+				f->R.rax = create(f->R.rdi, f->R.rsi);
 
 		break;
 	case SYS_REMOVE:
+			f->R.rax = remove(f->R.rdi);
 
 		break;
 	case SYS_OPEN:
@@ -197,10 +226,15 @@ void syscall_handler(struct intr_frame *f UNUSED)
 			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
 	case SYS_SEEK:
+			seek(f->R.rdi, f->R.rsi);
 		break;
 	case SYS_TELL:
+				f->R.rax = tell(f->R.rdi);
+
 		break;
 	case SYS_CLOSE:
+				close(f->R.rdi);
+
 		break;
 	}
 }
