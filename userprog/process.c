@@ -84,8 +84,6 @@ tid_t process_fork(const char *name, struct intr_frame *if_) {
 	if (tid == TID_ERROR) {
 		return TID_ERROR;
 	}
-
-	struct thread *child = get_child_with_pid(tid);
 	sema_down(&child->fork_sema);
 	if (child->exit_status == -1) {
 		return TID_ERROR;

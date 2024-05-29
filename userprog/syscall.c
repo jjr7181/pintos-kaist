@@ -69,31 +69,41 @@ void check_address(void *addr)
 	if (pml4_get_page(thread_current()->pml4, addr) == NULL)
 		exit(-1);
 }
-int read(int fd, void *buffer, unsigned size) {
-	check_address(buffer);
-
-	int read_result;
-	struct thread *cur = thread_current();
-	struct file *file_fd = find_file_by_fd(fd);
-
-	if (fd == 0) {
-		// read_result = i;
-		*(char *)buffer = input_getc();		
-		read_result = size;
-	}
-	else {
-		if (find_file_by_fd(fd) == NULL) {
-			return -1;
-		}
-		else {
-			lock_acquire(&filesys_lock);//위치 유의
-			read_result = file_read(find_file_by_fd(fd), buffer, size);
-			lock_release(&filesys_lock);
-		}
-	}
-	return read_result;
-}
-int open(const char *file) {
+int read(int fd, void *buffer, unsigned size)
+{
+    check_address(buffer);
+    off_t read_byte;
+    uint8_t *read_buffer = buffer;
+    if (fd == 0) // stdin
+    {
+        char key;
+        for (read_byte = 0; read_byte < size; read_byte++)
+        {
+            key = input_getc();
+            *read_buffer++ = key;
+            if (key == '\0')
+            {
+                break;
+            }
+        }
+    }
+    else if (fd == 1) // stdout
+    {
+        return -1;
+    }
+    else
+    {
+        struct file *read_file = find_file_by_fd(fd);
+        if (read_file == NULL)
+        {
+            return -1;
+        }
+        lock_acquire(&filesys_lock);
+        read_byte = file_read(read_file, buffer, size);
+        lock_release(&filesys_lock);
+    }
+    return read_byte;
+}int open(const char *file) {
 	check_address(file);
 	struct file *open_file = filesys_open(file);
 
@@ -215,8 +225,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		exit(f->R.rdi);
 		break;
 	case SYS_FORK:
-				f->R.rax = fork(f->R.rdi, f);
-
 		break;
 	case SYS_EXEC:
 		break;
