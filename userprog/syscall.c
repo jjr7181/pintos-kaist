@@ -168,8 +168,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		f->R.rax = open(f->R.rdi);
 		break;
 	case SYS_FILESIZE:
+			f->R.rax = filesize(f->R.rdi);
+
 		break;
 	case SYS_READ:
+				f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
+
 		break;
 	case SYS_WRITE:
 		break;
