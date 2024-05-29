@@ -155,6 +155,15 @@ unsigned tell(int fd) {
 	}
 	return file_tell(tell_file);
 }
+void remove_file_from_fdt(int fd)
+{
+    struct thread *cur = thread_current();
+
+    if (fd < 0 || fd >= FDCOUNT_LIMIT)
+        return;
+
+    cur->fd_table[fd] = NULL;
+}
 void close(int fd) {
 	struct file *fileobj = find_file_by_fd(fd);
 	if (fileobj == NULL) {
