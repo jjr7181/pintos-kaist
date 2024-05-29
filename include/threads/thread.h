@@ -118,7 +118,7 @@ struct thread
 	struct semaphore load_sema; // 현재 스레드가 load되는 동안 부모가 기다리게 하기 위한 semaphore
 	struct semaphore exit_sema;
 	struct semaphore wait_sema;
-
+ 	struct semaphore fork_sema;
 	struct file *running; // 현재 실행중인 파일
 	struct file **fd_table;         // thread_create에서 할당
 

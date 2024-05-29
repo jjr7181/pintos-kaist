@@ -26,7 +26,9 @@ void halt(void)
 {
 	power_off();
 }
-
+tid_t fork(const char *thread_name, struct intr_frame *f) {
+	return process_fork(thread_name, f);
+}
 void exit(int status)
 {
 struct thread *cur = thread_current();
@@ -213,6 +215,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		exit(f->R.rdi);
 		break;
 	case SYS_FORK:
+				f->R.rax = fork(f->R.rdi, f);
+
 		break;
 	case SYS_EXEC:
 		break;
