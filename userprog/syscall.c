@@ -137,10 +137,10 @@ int write(int fd, const void *buffer, unsigned size) {
 	lock_release(&filesys_lock);
 	return write_result;
 }
-void seek(int fd, unsigned pos){
+void seek(int fd, unsigned position){
 	struct file *seek_file=find_file_by_fd(fd);
 	if(seek_file<=2)return;
-	seek_file->pos=pos;
+	seek_file->pos=position;
 	
 }
 unsigned tell(int fd) {
