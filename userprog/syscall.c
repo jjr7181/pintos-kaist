@@ -178,5 +178,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_TELL:
 		break;
 	case SYS_CLOSE:
+		break;
 	}
 }
