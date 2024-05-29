@@ -213,12 +213,15 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 	t->max_fd = 2;
+	t->fdt = palloc_get_page(PAL_ZERO);
 
-	for (int i = 0; i < 130; ++i) 
+	for (int i = 2; i < 130; ++i) 
 	{
 		t->fdt[i] = NULL;
   }
 
+	list_push_back(&thread_current()->child_list, &t->child_elem);
+	
 	/* Add to run queue. */
 	thread_unblock (t);
 
@@ -429,7 +432,7 @@ kernel_thread (thread_func *function, void *aux) {
 /* Does basic initialization of T as a blocked thread named
    NAME. */
 static void
-init_thread (struct thread *t, const char *name, int priority) {
+	init_thread (struct thread *t, const char *name, int priority) {
 	ASSERT (t != NULL);
 	ASSERT (PRI_MIN <= priority && priority <= PRI_MAX);
 	ASSERT (name != NULL);
@@ -445,6 +448,10 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->local_ticks = 0; // init local tick
 	t->wait_on_lock = NULL;
 	list_init (&(t->donation)); //init donation list
+	list_init (&(t->child_list));
+	sema_init(&t->load_sema,0);
+	sema_init(&t->exit_sema,0);
+	sema_init(&t->wait_sema,0);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

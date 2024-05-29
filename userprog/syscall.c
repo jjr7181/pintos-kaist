@@ -68,19 +68,24 @@ syscall_handler (struct intr_frame *f UNUSED) {
 
 	case SYS_FORK:
 	{
-
+		//thread name + tf 넘겨주기
+		// f->R.rax = fork(f->R.rdi, f);
+		thread_current()->parent_if = *f;
+		f->R.rax = fork(f->R.rdi);  
+		break;
 	}
 		
 	case SYS_EXEC:
 	{
-		char *process_name = f->R.rdi;
-		f->R.rax = exec(process_name);
+		//process name 전달	 
+		f->R.rax = exec(f->R.rdi);
 		break;
 	}
 
 	case SYS_WAIT:
 	{
-
+		f->R.rax = wait(f->R.rdi);
+		break;
 	}
 	
 	case SYS_CREATE:
@@ -166,17 +171,33 @@ halt (void) {
 void 
 exit (int status) {
 	struct thread *cur = thread_current();
+	cur->exit_status = status;
 	printf("%s: exit(%d)\n", cur->name, status);
 	thread_exit();
+}
+
+tid_t
+fork (const char *thread_name)
+{	
+	struct thread *curr = thread_current();
+
+	return process_fork(thread_name, &curr->parent_if);
 }
 
 // cmd_line으로 주어지는 프로세스를 실행시킨다
 int 
 exec (const char *cmd_line){
 	check_address(cmd_line);
-	int result = process_exec(cmd_line);
 
-	return result;
+  // 스레드의 이름을 변경하지 않고 바로 실행한다.
+  if (process_exec(cmd_line) == -1)
+    exit(-1); // 실패 시 status -1로 종료한다.
+}
+
+int
+wait(int pid)
+{
+	return process_wait(pid);
 }
 
 bool 
@@ -221,7 +242,7 @@ filesize (int fd) {
 int
 read (int fd, void *buffer, unsigned size)
 {
-	if (130 < fd || fd < 0 || fd == NULL)
+	if (130 <= fd || fd < 0 || fd == NULL)
 		exit(-1);
 	check_address(buffer);
 
@@ -248,7 +269,7 @@ int
 write (int fd, const void *buffer, unsigned size){
 	
 	// fd == 0 일때(stdin) 처리 필요할지도?..
-	if (130 < fd || fd < 0 || fd == NULL)
+	if (130 <= fd || fd < 0 || fd == NULL)
 		exit(-1);
 	check_address(buffer);
 
@@ -304,7 +325,7 @@ tell(int fd)
 void
 close (int fd)
 {
-	if (130 < fd || fd < 2 || fd == NULL)
+	if (130 <= fd || fd < 2 || fd == NULL)
 		exit(-1);
 
 	struct thread *curr = thread_current();

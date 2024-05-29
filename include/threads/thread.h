@@ -5,6 +5,7 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
@@ -95,15 +96,27 @@ struct thread {
 	int64_t local_ticks;								// local ticks
 	struct lock *wait_on_lock;					// wait for which the thread waits
 	struct list donation;
-	int exit_status;										// 초기화 해줘야댐
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
 	struct list_elem d_elem;
+	
+	struct thread *parent;							//pointer to a parent thread
 
-	// file descriptor table
-	struct file *fdt[130];
-	unsigned int max_fd; //needs to be initialized
+	// project 2: Userprograms
+	int exit_status;									  // 초기화 해줘야댐
+	struct file **fdt;							// file descriptor table
+	// struct file *fdt[130];							// file descriptor table
+	unsigned int max_fd; 								// fd == 2부터 하나씩 할당
+
+	struct list child_list;									// list of children that are forked
+	struct list_elem child_elem;				//child_elem for the child list
+	struct intr_frame parent_if;				/* parent thread's interrupt frame*/
+
+	struct semaphore load_sema;					// parent has to wait for its child to successfully load itself
+	struct semaphore wait_sema;					// parent has to wait for its child to exit 
+	struct semaphore exit_sema;					//
+	struct file *running;
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

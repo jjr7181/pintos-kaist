@@ -12,5 +12,6 @@ void process_activate (struct thread *next);
 // void argument_stack(char *argv[], int argc, struct intr_frame *if_);
 void argument_stack(char **parse, int count, struct intr_frame *if_);
 int process_add_file (struct file *f);
+struct thread *get_child(int tid);
 
 #endif /* userprog/process.h */
