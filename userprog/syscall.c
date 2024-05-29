@@ -53,7 +53,15 @@ int filesize(int fd) {
 	}
 	return file_length(open_file);
 }
-
+void check_address(void *addr)
+{
+	if (addr == NULL)
+		exit(-1);
+	if (!is_user_vaddr(addr))
+		exit(-1);
+	if (pml4_get_page(thread_current()->pml4, addr) == NULL)
+		exit(-1);
+}
 int read(int fd, void *buffer, unsigned size) {
 	check_address(buffer);
 
@@ -146,17 +154,15 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_FORK:
 		break;
 	case SYS_EXEC:
-if (exec(f->R.rdi) == -1) {
-				exit(-1);
-			}		break;
+		break;
 	case SYS_WAIT:
 		f->R.rax = process_wait(f->R.rdi);
 		break;
 	case SYS_CREATE:
-		f->R.rax = create(f->R.rdi, f->R.rsi);
+
 		break;
 	case SYS_REMOVE:
-		f->R.rax = remove(f->R.rdi);
+
 		break;
 	case SYS_OPEN:
 		f->R.rax = open(f->R.rdi);
@@ -172,6 +178,5 @@ if (exec(f->R.rdi) == -1) {
 	case SYS_TELL:
 		break;
 	case SYS_CLOSE:
-		close(f->R.rdi);
 	}
 }
