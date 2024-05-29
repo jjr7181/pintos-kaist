@@ -109,7 +109,27 @@ static struct file *find_file_by_fd(int fd) {
 	}
 	return cur->fd_table[fd];
 }
+int write(int fd, const void *buffer, unsigned size) {
+	check_address(buffer);
 
+	int write_result;
+	lock_acquire(&filesys_lock);
+	if (fd == 1) {
+		putbuf(buffer, size);		// 문자열을 화면에 출력하는 함수
+		write_result = size;
+	}
+	else {
+		if (find_file_by_fd(fd) != NULL) {
+			write_result = file_write(find_file_by_fd(fd), buffer, size);
+		}
+		else {
+			write_result = -1;
+		}
+	}
+	lock_release(&filesys_lock);
+	return write_result;
+}
+ 
 
 /* System call.
  *
@@ -154,6 +174,9 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_FORK:
 		break;
 	case SYS_EXEC:
+				if (exec(f->R.rdi) == -1) {
+				exit(-1);
+			}
 		break;
 	case SYS_WAIT:
 		f->R.rax = process_wait(f->R.rdi);
@@ -169,13 +192,12 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		break;
 	case SYS_FILESIZE:
 			f->R.rax = filesize(f->R.rdi);
-
 		break;
 	case SYS_READ:
 				f->R.rax = read(f->R.rdi, f->R.rsi, f->R.rdx);
-
 		break;
 	case SYS_WRITE:
+			f->R.rax = write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
 	case SYS_SEEK:
 		break;
