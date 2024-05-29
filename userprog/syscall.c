@@ -16,6 +16,11 @@
 #include "threads/palloc.h"
 static struct file *find_file_by_fd(int fd);
 void syscall_entry(void);
+struct file {
+	struct inode *inode;        /* File's inode. */
+	off_t pos;                  /* Current position. */
+	bool deny_write;            /* Has file_deny_write() been called? */
+};
 
 void halt(void)
 {
