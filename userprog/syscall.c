@@ -174,9 +174,6 @@ void syscall_handler(struct intr_frame *f UNUSED)
 	case SYS_FORK:
 		break;
 	case SYS_EXEC:
-				if (exec(f->R.rdi) == -1) {
-				exit(-1);
-			}
 		break;
 	case SYS_WAIT:
 		f->R.rax = process_wait(f->R.rdi);
