@@ -213,6 +213,7 @@ void syscall_handler(struct intr_frame *f UNUSED)
 {
 	// TODO: Your implementation goes here.
 	int syscall_n = f->R.rax; /* 시스템 콜 넘버 */
+		char *fn_copy;
 	switch (syscall_n)
 	{
 	case SYS_HALT:
