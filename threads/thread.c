@@ -213,11 +213,19 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	list_push_back(&thread_current()->child_list, &t->child_elem);
+	t->parent = thread_current();
+
 	/* file descriptor 메모리 할당 및 초기화 */
-	// t->fdt = palloc_get_multiple(PAL_ZERO, 2);
+	t->fdt = palloc_get_multiple(PAL_ZERO, 2);
+	for (int i=0; i < 128; i++) {
+		t->fdt[i] == NULL;
+	}
+	if(t->fdt == NULL) return TID_ERROR;
 
 	/* Add to run queue. */
 	thread_unblock (t);
+	priority_preemption();
 
 	return tid;
 }
@@ -435,6 +443,13 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->wait_on_lock = NULL;
 	t->exit_status = 1; // 스레드 종료 안 됨
 
+	t->next_fd = 2;
+
+	list_init(&t->child_list);
+	sema_init(&t->fork_sema,0);
+	sema_init(&t->wait_sema,0);
+	sema_init(&t->exit_sema,0);
+	
 	t->status = THREAD_BLOCKED;
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
@@ -661,28 +676,41 @@ allocate_tid (void) {
 
 void
 wake_up(int64_t ticks) {
+	enum intr_level old_level;
+	old_level = intr_disable();
 	// int64_t wake_up_t = global_ticks;
 
 	// wake up 할 threads 탐색
 	if(global_ticks <= ticks)
 		search_wake_up_t(ticks);
+
+	intr_set_level(old_level);
 }
 
 void
 search_wake_up_t(int64_t *os_tick){
+	if (list_empty(&sleep_list)) {
+		// printf("111111");
+		return;
+	}
+	// printf("2222222\n");
 	struct thread *sleep_thread = list_entry(list_begin(&sleep_list), struct thread, elem);
 	int64_t sleep_thread_t = sleep_thread->local_ticks; 
-
-	if (list_empty(&sleep_list)) return;
-
+	// printf("%d\n", sleep_thread_t);
+	// printf("%d\n", os_tick);
 	while(sleep_thread_t <= os_tick){
-
+		// printf("33333333\n");
 		insert_ready_list();
 
 		ASSERT(sleep_thread->elem.next != NULL)
 
 		sleep_thread = list_entry(list_begin(&sleep_list), struct thread, elem);
+		if (list_empty(&sleep_list)) {
+			break;
+		 }
 		sleep_thread_t = sleep_thread->local_ticks;
+		// printf("박현민1 : %d\n", sleep_thread_t);
+		// printf("박현민2 : %d\n", os_tick);
 	}
 
 	set_global_tick();
@@ -690,8 +718,9 @@ search_wake_up_t(int64_t *os_tick){
 
 void
 insert_ready_list(){
+	// printf("들옴1");
 	struct thread *move_t = list_entry(list_pop_front(&sleep_list), struct thread, elem);
-
+	// printf("들옴2");
 	thread_unblock(move_t);
 }
 

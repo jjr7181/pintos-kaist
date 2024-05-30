@@ -5,7 +5,7 @@
 __attribute__((always_inline))
 static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 		uint64_t a3_, uint64_t a4_, uint64_t a5_, uint64_t a6_) {
-	int64_t ret;
+	int64_t ret; // 함수의 반환값 저장.
 	register uint64_t *num asm ("rax") = (uint64_t *) num_;
 	register uint64_t *a1 asm ("rdi") = (uint64_t *) a1_;
 	register uint64_t *a2 asm ("rsi") = (uint64_t *) a2_;
@@ -15,7 +15,7 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 	register uint64_t *a6 asm ("r9") = (uint64_t *) a6_;
 
 	__asm __volatile(
-			"mov %1, %%rax\n"
+			"mov %1, %%rax\n" // %1, %2, ... 자리 표시자. num, a1, a2 .. 로 대체됨.
 			"mov %2, %%rdi\n"
 			"mov %3, %%rsi\n"
 			"mov %4, %%rdx\n"
@@ -23,9 +23,9 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 			"mov %6, %%r8\n"
 			"mov %7, %%r9\n"
 			"syscall\n"
-			: "=a" (ret)
+			: "=a" (ret) // "=a" : ret 변수를 rax 레지스터로부터 받아옴.
 			: "g" (num), "g" (a1), "g" (a2), "g" (a3), "g" (a4), "g" (a5), "g" (a6)
-			: "cc", "memory");
+			: "cc", "memory"); // condition code registers와 memory가 변경될 수 있음.
 	return ret;
 }
 

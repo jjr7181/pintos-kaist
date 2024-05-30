@@ -1,0 +1,12 @@
+{
+    "files.associations": {
+        "stdbool.h": "c",
+        "*.inc": "c",
+        "flags.h": "c",
+        "syscall.h": "c",
+        "palloc.h": "c",
+        "thread.h": "c",
+        "mmu.h": "c",
+        "process.h": "c"
+    }
+}

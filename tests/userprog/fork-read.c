@@ -16,7 +16,7 @@ test_main (void)
   int byte_cnt;
   char *buffer;
 
-  CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\"");
+  CHECK ((handle = open ("sample.txt")) > 1, "open \"sample.txt\""); // 1
   buffer = get_boundary_area () - sizeof sample / 2;
   byte_cnt = read (handle, buffer, 20);
   
@@ -31,12 +31,12 @@ test_main (void)
         msg ("text actually read:\n%s", buffer);
         fail ("expected text differs from actual");
     } else {
-      msg ("Parent success");
+      msg ("Parent success"); // 4
     }
 
     close(handle);
   } else {
-    msg ("child run");
+    msg ("child run"); // 2
 
     byte_cnt = read (handle, buffer + 20, sizeof sample - 21);
     if (byte_cnt != sizeof sample - 21)
@@ -51,7 +51,7 @@ test_main (void)
     char magic_sentence[17] = "pintos is funny!";
     memcpy(buffer, magic_sentence, 17);
 
-    msg ("Child: %s", buffer);
+    msg ("Child: %s", buffer); // 3
     close(handle);
   }
 }

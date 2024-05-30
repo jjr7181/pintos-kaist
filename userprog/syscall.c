@@ -11,10 +11,11 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "devices/input.h"
+#include "threads/palloc.h"
+#include "userprog/process.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
-
 /* System call.
  *
  * Previously system call services was handled by the interrupt handler
@@ -46,9 +47,17 @@ void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
 	// printf ("system call!\n");
+	// printf("syscall_handler:  %p \n" , f); //0x8004241f40 
+	// printf("rdi: %p\n", f->R.rdi);
+
+	// struct thread *curr = thread_current();
+	// printf("syscall_handler curr thread:  %p \n" , curr->tf); //0x8004241210 
+	// printf("rdi: %p\n", curr->tf.R.rdi);
+
 
 	uint64_t file_number = f->R.rax;
-	struct thread *curr = thread_current();
+	struct thread *parent_t = thread_current();
+	parent_t->parent_if = f;
 
 	switch (file_number)
 	{
@@ -59,10 +68,13 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi); // ????? 인자 값이 자동 전달될까???
 			break;
 		case SYS_FORK:
+			f->R.rax = fork(f->R.rdi);
 			break;
 		case SYS_EXEC:
+			f->R.rax = exec(f->R.rdi);
 			break;
 		case SYS_WAIT:
+			f->R.rax = wait(f->R.rdi);
 			break;
 		case SYS_CREATE:
 			f->R.rax = create( f->R.rdi, f->R.rsi);
@@ -107,6 +119,8 @@ void
 exit (int status){
 	struct thread *curr = thread_current();
 	// 현재 동작 중인 유저 프로그램 종료
+	curr->exit_status = status;
+	printf("exit 실행\n");
 	printf("%s: exit(%d)\n" , curr -> name , status);
 	thread_exit();
 	// 커널에 상태 리턴하기???????????????????????????
@@ -146,6 +160,8 @@ check_addr_val(const void *addr){
 
 bool
 remove(const char *file_name) {
+	check_addr_val(file_name);
+
 	return filesys_remove(file_name);
 }
 
@@ -168,6 +184,11 @@ open (const char *file_name) { //(char *) 0x20101234 , sample.txt
 	return curr_fd;
 }
 
+/*
+* fd: 파일 디스크립터로서 파일 시스템에 어떤 파일을 읽을 것인지 알려줌
+* buffer: read() 결과를 저장할 버퍼를 가리킴. 유저 영역에 저장됨.
+* length: 버퍼의 크기
+*/
 int read (int fd, void *buffer, unsigned length) {
 	check_addr_val(buffer);
 
@@ -199,11 +220,9 @@ void seek (int fd, unsigned position) {
 }
 
 void close (int fd) {
-
-
-	if(0 > fd ||  fd >= 64) return;
-	
 	struct thread *t = thread_current();
+	if(0 > fd ||  fd >= t->next_fd) return;
+
 	struct file *file = t->fdt[fd];
 
 	if(file == NULL) return;
@@ -215,7 +234,8 @@ void close (int fd) {
 
 unsigned tell (int fd) {
 	struct thread *t = thread_current();
-	
+	if(0 > fd ||  fd >= t->next_fd) return;
+
 	struct file *file = t->fdt[fd];
 
 	return file_tell(file);
@@ -227,4 +247,30 @@ int filesize (int fd) {
 	struct file *file = t->fdt[fd];
 
 	return file_length(file);
+}
+
+ //pid_t 왜 안 됨?
+pid_t fork (const char *thread_name) {
+	check_addr_val(thread_name);
+	return process_fork (thread_name, NULL); 
+}
+
+int wait(pid_t pid) {
+	return process_wait(pid);
+}
+
+int
+exec (const char *file) {
+	check_addr_val(file);
+
+	char *fn_copy = palloc_get_page (0); // 이거 임포트 제대로 안돼서 에러남.
+    if (fn_copy == NULL) {
+        exit(-1);
+    }
+    strlcpy (fn_copy, file, PGSIZE);
+    if (process_exec(fn_copy) == -1) {
+        // printf("process_exec failed for: %s\n", cmd_line);
+        exit(-1);
+    }
+    NOT_REACHED();
 }

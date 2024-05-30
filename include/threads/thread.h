@@ -5,10 +5,12 @@
 #include <list.h>
 #include <stdint.h>
 #include "threads/interrupt.h"
+#include "threads/synch.h"
 #ifdef VM
 #include "vm/vm.h"
 #endif
 
+#define USERPROG
 /* States in a thread's life cycle. */
 enum thread_status {
 	THREAD_RUNNING,     /* Running thread. */
@@ -105,8 +107,18 @@ struct thread {
 	int exit_status;					/* 과제 2) */
 	// file descriptor table 정의하기
 	// struct file *fdt [64];
-	// struct file **fdt;
+	struct file **fdt;
 	int next_fd;
+
+	struct intr_frame *parent_if;		/* fork 구현 */
+	
+	struct semaphore fork_sema;
+	struct semaphore wait_sema; // - : 나(자식) 죽음
+	struct semaphore exit_sema; // + : 오케 너 죽은 거 확인
+
+	struct list child_list;
+	struct list_elem child_elem;
+	struct thread *parent;
 
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
