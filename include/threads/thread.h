@@ -119,6 +119,9 @@ struct thread
 	struct semaphore exit_sema;
 	struct semaphore wait_sema;
 
+	struct file *running; //
+	struct file **fd_table;//잘못 지웠다 머슦
+
     int fd_idx;                     
 
 #ifdef USERPROG
