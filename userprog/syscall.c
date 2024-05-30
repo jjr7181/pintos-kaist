@@ -35,7 +35,7 @@ struct thread *cur = thread_current();
     cur->exit_status = status;		// 프로그램이 정상적으로 종료되었는지 확인(정상적 종료 시 0)
 
 	printf("%s: exit(%d)\n", thread_name(), status); 	// 종료 시 Process Termination Message 출력
-	thread_exit();		// 스레드 종료
+	threaockd_exit();		// 스레드 종료
 }
 int add_file_to_fdt(struct file *file) {
 	struct thread *cur = thread_current();
@@ -137,7 +137,7 @@ int write(int fd, const void *buffer, unsigned size) {
 	int write_result;
 	lock_acquire(&filesys_lock);
 	if (fd == 1) {
-		putbuf(buffer, size);		// 문자열을 화면에 출력하는 함수
+		putbuf(buffer, size);	
 		write_result = size;
 	}
 	else {

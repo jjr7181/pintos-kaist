@@ -115,14 +115,11 @@ struct thread
 	struct list child_list;
 	struct list_elem child_elem;
 
-	struct semaphore load_sema; // 현재 스레드가 load되는 동안 부모가 기다리게 하기 위한 semaphore
+	struct semaphore load_sema;//왜 3개나 필요한지 아까 들은 그거
 	struct semaphore exit_sema;
 	struct semaphore wait_sema;
 
-	struct file *running; // 현재 실행중인 파일
-	struct file **fd_table;         // thread_create에서 할당
-
-    int fd_idx;                     // fd테이블에 open spot의 인덱스
+    int fd_idx;                     
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
