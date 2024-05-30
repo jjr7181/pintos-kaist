@@ -85,6 +85,7 @@ struct page_operations {
  * We don't want to force you to obey any specific design for this struct.
  * All designs up to you for this. */
 struct supplemental_page_table {
+	struct hash set_table;//supplemental_page의 앞글자만 따서 표현
 };
 
 #include "threads/thread.h"

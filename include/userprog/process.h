@@ -13,5 +13,6 @@ void argument_stack(char **parse, int count, void **rsp);
 int process_add_file(struct file *f);
 struct file *process_get_file(int fd);
 void process_close_file(int fd);
+void supplemental_page_table_init (struct supplemental_page_table *spt UNUSED)
 struct thread *get_child_process(int pid);
 #endif /* USERPROG_PROCESS_H */
