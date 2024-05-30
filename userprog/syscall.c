@@ -40,16 +40,13 @@ struct thread *cur = thread_current();
 int add_file_to_fdt(struct file *file) {
 	struct thread *cur = thread_current();
 	struct file **fdt = cur->fd_table;
-
 	// fd의 위치가 제한 범위를 넘지 않고, fdtable의 인덱스 위치와 일치한다면
 	while (cur->fd_idx < FDCOUNT_LIMIT && fdt[cur->fd_idx]) {
 		cur->fd_idx++;
 	}
-
 	// fdt이 가득 찼다면
 	if (cur->fd_idx >= FDCOUNT_LIMIT)
 		return -1;
-
 	fdt[cur->fd_idx] = file;
 	return cur->fd_idx;
 }
@@ -260,7 +257,11 @@ void syscall_handler(struct intr_frame *f UNUSED)
 		break;
 	case SYS_CLOSE:
 				close(f->R.rdi);
-
 		break;
+	default:
+			exit(-1);
+			break;
 	}
+	//thread_exit ();
+
 }
